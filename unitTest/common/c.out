@@ -1,0 +1,8 @@
+mode: set
+GoDemo/unitTest/common/http.go:9.15,11.2 1 1
+GoDemo/unitTest/common/http.go:13.56,23.2 4 0
+GoDemo/unitTest/common/http.go:25.19,26.13 1 1
+GoDemo/unitTest/common/http.go:27.9,28.25 1 1
+GoDemo/unitTest/common/http.go:29.9,30.20 1 1
+GoDemo/unitTest/common/http.go:31.9,32.22 1 0
+GoDemo/unitTest/common/http.go:33.10,34.19 1 0
