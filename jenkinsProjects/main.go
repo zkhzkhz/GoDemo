@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -88,6 +89,8 @@ func main() {
 		f.SetCellValue(sheetName, cellName, ac.maintainerEmail)
 		cellName, _ = excelize.CoordinatesToCellName(7, i+2)
 		f.SetCellValue(sheetName, cellName, ac.jobUrl)
+		cellName, _ = excelize.CoordinatesToCellName(8, i+2)
+		f.SetCellValue(sheetName, cellName, ac.serviceName)
 	}
 
 	// 保存Excel文件
@@ -111,7 +114,7 @@ func getAllNonFolderJobs(jobs []Job, client *http.Client, req *http.Request) {
 			if job.Jobs != nil {
 				getFolderJobs(job.URL+"api/json", client, req)
 			} else {
-				if job.Name == "openeuler-copr-test-image-publish" {
+				if job.Name == "mindspore-prod-usercenter" {
 					fmt.Println(111)
 				}
 				getLastBuildInfo(job, client, req)
@@ -160,11 +163,11 @@ func getLastBuildInfo(job Job, client *http.Client, req *http.Request) {
 				if parameter.Name == "release" {
 					result.branch = parameter.Value
 				}
-				if parameter.Name == "REPOSITORY" || parameter.Name == "REPO" {
+				if parameter.Name == "REPOSITORY" || parameter.Name == "REPO" || parameter.Name == "CODE_REPOSITORY" || parameter.Name == "REPOTISOTY" {
 					result.repoUrl = parameter.Value
 				}
 				if parameter.Name == "CODE_BRANCH" {
-					result.repoUrl = parameter.Value
+					result.branch = parameter.Value
 				}
 				if parameter.Name == "PROJECT_NAME" {
 					result.jobName = parameter.Value
@@ -174,9 +177,28 @@ func getLastBuildInfo(job Job, client *http.Client, req *http.Request) {
 				}
 			}
 		}
+		if action.Class == "hudson.plugins.git.util.BuildData" && len(action.RemoteUrls) > 0 && len(action.LastBuiltRevision.Branch) > 0 {
+			if result.repoUrl == "" {
+				result.repoUrl = action.RemoteUrls[0]
+			}
+			result.branch = strings.ReplaceAll(action.LastBuiltRevision.Branch[0].Name, "refs/remotes/origin/", "")
+		}
 	}
-	result.product = lastBuildInfo.FullDisplayName
+	if lastBuildInfo.URL == "" {
+		return
+	}
+	split := strings.Split(lastBuildInfo.URL, "/")
+	result.description = lastBuildInfo.FullDisplayName
+	result.product = split[4]
 	result.jobUrl = lastBuildInfo.URL
+	if result.jobName == "" {
+		result.jobName = split[len(split)-3]
+	}
+	if result.repoUrl != "" {
+		repoUrlSplit := strings.Split(result.repoUrl, "/")
+		result.jobName = strings.Replace(repoUrlSplit[len(repoUrlSplit)-1], ".git", "", 1)
+		result.serviceName = result.jobName
+	}
 	res = append(res, result)
 }
 
@@ -218,6 +240,7 @@ type Result struct {
 	branch          string
 	maintainerEmail string
 	jobUrl          string
+	serviceName     string
 }
 
 type Cause struct {
@@ -235,9 +258,15 @@ type Parameter struct {
 }
 
 type Action struct {
-	Class      string      `json:"_class"`
-	Causes     []Cause     `json:"causes,omitempty"`
-	Parameters []Parameter `json:"parameters,omitempty"`
+	Class              string      `json:"_class"`
+	Causes             []Cause     `json:"causes,omitempty"`
+	Parameters         []Parameter `json:"parameters,omitempty"`
+	BuildsByBranchName BuildData   `json:"buildsByBranchName,omitempty"`
+	RemoteUrls         []string    `json:"remoteUrls"`
+	LastBuiltRevision  struct {
+		SHA1   string   `json:"SHA1"`
+		Branch []Branch `json:"branch"`
+	} `json:"lastBuiltRevision"`
 }
 
 type Branch struct {
@@ -262,12 +291,6 @@ type Build struct {
 type BuildData struct {
 	Class              string           `json:"_class"`
 	BuildsByBranchName map[string]Build `json:"buildsByBranchName"`
-	LastBuiltRevision  struct {
-		SHA1   string   `json:"SHA1"`
-		Branch []Branch `json:"branch"`
-	} `json:"lastBuiltRevision"`
-	RemoteUrls []string `json:"remoteUrls"`
-	ScmName    string   `json:"scmName"`
 }
 
 type Run struct {
