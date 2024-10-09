@@ -67,7 +67,7 @@ func main() {
 	sheetName := "Sheet1"
 
 	// 设置表头
-	headers := []string{"product", "jobName", "description", "repoUrl", "branch", "maintainerEmail", "jobUrl"}
+	headers := []string{"product", "jobName", "description", "repoUrl", "branch", "maintainerEmail", "jobUrl", "serviceName"}
 	for i, header := range headers {
 		cellName, _ := excelize.CoordinatesToCellName(i+1, 1)
 		f.SetCellValue(sheetName, cellName, header)
@@ -94,10 +94,10 @@ func main() {
 	}
 
 	// 保存Excel文件
-	if err := f.SaveAs("people" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".xlsx"); err != nil {
+	if err := f.SaveAs("jenkinsProjects" + strconv.FormatInt(time.Now().UnixMilli(), 10) + ".xlsx"); err != nil {
 		fmt.Println(err)
 	} else {
-		fmt.Println("Excel文件已成功创建：people.xlsx")
+		fmt.Println("Excel文件已成功创建")
 	}
 }
 
@@ -163,7 +163,7 @@ func getLastBuildInfo(job Job, client *http.Client, req *http.Request) {
 				if parameter.Name == "release" {
 					result.branch = parameter.Value
 				}
-				if parameter.Name == "REPOSITORY" || parameter.Name == "REPO" || parameter.Name == "CODE_REPOSITORY" || parameter.Name == "REPOTISOTY" {
+				if parameter.Name == "REPOSITORY" || parameter.Name == "REPO" || parameter.Name == "CODE_REPOSITORY" || parameter.Name == "REPOTISOTY" || parameter.Name == "REPOTITOPY" {
 					result.repoUrl = parameter.Value
 				}
 				if parameter.Name == "CODE_BRANCH" {
@@ -199,7 +199,22 @@ func getLastBuildInfo(job Job, client *http.Client, req *http.Request) {
 		result.jobName = strings.Replace(repoUrlSplit[len(repoUrlSplit)-1], ".git", "", 1)
 		result.serviceName = result.jobName
 	}
+	if result.repoUrl == "" || strings.Contains(result.jobUrl, "-test") || strings.Contains(result.jobUrl, "-icsl") {
+		return
+	}
+	if result.serviceName != "" && containsService(result.serviceName) {
+		return
+	}
 	res = append(res, result)
+}
+
+func containsService(serviceName string) bool {
+	for _, this := range res {
+		if this.serviceName == serviceName {
+			return true
+		}
+	}
+	return false
 }
 
 func getFolderJobs(folderURL string, client *http.Client, req *http.Request) {
