@@ -1,0 +1,30 @@
+format: json
+dependency-tree: true
+list-all-pkgs: true
+output: result.json
+severity:
+  - UNKNOWN
+  - LOW
+  - MEDIUM
+  - HIGH
+  - CRITICAL
+scan:
+  skip-dirs:
+    - /lib64
+    - /lib
+    - /usr/lib
+    - /usr/include
+
+  security-checks:
+    - vuln
+    - secret
+    - config
+vulnerability:
+  type:
+    - os
+    - library
+  ignore-unfixed: true
+
+# Same as '--cache-dir'
+# Default is your system cache dir
+cache-dir: /opt/cached_resources/trivy_db
