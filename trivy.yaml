@@ -24,7 +24,7 @@ vulnerability:
     - os
     - library
   ignore-unfixed: true
-  token: dawd2e1e2dadeaw
+  token: dawd2e1e2dadeaw@42——dwda%#@
   xxx
 # Same as '--cache-dir'
 # Default is your system cache dir
