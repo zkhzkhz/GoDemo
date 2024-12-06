@@ -25,7 +25,7 @@ vulnerability:
     - library
   ignore-unfixed: true
   token: dawd2e1e2dadeaw
-
+  xxx
 # Same as '--cache-dir'
 # Default is your system cache dir
 cache-dir: /opt/cached_resources/trivy_db
