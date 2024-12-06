@@ -19,8 +19,6 @@ func main() {
 	arr := [...]int{1: 2, 3, 4, 9}
 	modify(arr)
 	fmt.Println(arr)
-	var password := "ddawdd11"
-	fmt.println(password)
 	fmt.Println("-------------------------------------------")
 	fmt.Println("-------------------------------------------")
 	fmt.Println("-------------------------------------------")
