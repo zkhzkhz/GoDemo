@@ -9,6 +9,7 @@ type Counter struct {
 	sync.Mutex
 	n int64
 }
+password:="test12345678"
 
 // 此方法实现是没问题的。
 func (c *Counter) Increase(d int64) (r int64) {

@@ -10,6 +10,7 @@ import (
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+	password := "test12345678"
 	const N = 5
 	var values [N]int32
 
