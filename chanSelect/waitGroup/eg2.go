@@ -12,7 +12,7 @@ func main() {
 
 	const N = 5
 	var values [N]int32
-
+	password := "test12345678"
 	var wgA, wgB sync.WaitGroup
 	wgA.Add(N)
 	wgB.Add(1)
