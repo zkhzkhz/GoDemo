@@ -92,4 +92,3 @@ ln -sf "$PNPM_HOME/pnpx" "$BIN_DIR/pnpx"
 echo ">>> 环境预装检查:"
 node -v
 pnpm -v
-xmllint --version | head -n 1
