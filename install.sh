@@ -1,3 +1,7 @@
+# --- 配置路径 ---
+BASE_PATH="/opt/cached_resources"
+BIN_DIR="$BASE_PATH/bin"
+
 # 1. 创建目标目录
 mkdir -p /opt/cached_resources/python
 
@@ -26,3 +30,13 @@ export PYTHONUSERBASE=/opt/cached_resources/python/user_packages
     pytest \
     pytest-cov \
     coverage
+
+
+# 先用 yum 下载，然后提取二进制，确保跨容器可用
+cd /tmp
+yum install -y yum-utils
+yumdownloader libxml2
+rpm2cpio libxml2-*.rpm | cpio -idmv
+cp -f usr/bin/xmllint $BIN_DIR/
+# 赋予执行权限
+chmod +x $BIN_DIR/xmllint
