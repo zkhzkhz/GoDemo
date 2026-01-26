@@ -1,9 +1,11 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
 BIN_DIR="$BASE_PATH/bin"
+PNPM_HOME="$BASE_PATH/pnpm"
+PNPM_STORE="$BASE_PATH/pnpm_store"
 export NVM_DIR="/opt/cached_resources/nvm"
-mkdir -p "$NVM_DIR"
-mkdir -p  $BIN_DIR
+mkdir -p "$NVM_DIR" "$PNPM_HOME" "$PNPM_STORE"
+mkdir -p  $BIN_DIR 
 
 # 1. 创建目标目录
 mkdir -p /opt/cached_resources/python
@@ -72,7 +74,22 @@ ln -sf "$CURRENT_NODE_DIR/npm" "$BIN_DIR/npm"
 ln -sf "$CURRENT_NODE_DIR/npx" "$BIN_DIR/npx"
 
 # --- 5. 设置全局缓存到挂载点 ---
-npm config set cache "/opt/cached_resources/npm_cache" --global
+echo ">>> 正在持久化安装 pnpm..."
+# 使用 Corepack 安装 pnpm (Node 24 自带)
+export PNPM_HOME="$PNPM_HOME"
+export PATH="$PNPM_HOME:$PATH"
+corepack enable
+corepack prepare pnpm@latest --activate
 
-echo ">>> Node 24 已持久化安装至 $NVM_DIR"
+# 建立 pnpm 软链接到全局 BIN
+ln -sf "$PNPM_HOME/pnpm" "$BIN_DIR/pnpm"
+ln -sf "$PNPM_HOME/pnpx" "$BIN_DIR/pnpx"
+
+# 关键：设置 pnpm 存储路径到挂载目录，实现真正的持久化缓存
+"$BIN_DIR/pnpm" config set store-dir "$PNPM_STORE" --global
+"$BIN_DIR/npm" config set cache "$BASE_PATH/npm_cache" --global
+
+echo ">>> 环境预装检查:"
 node -v
+pnpm -v
+xmllint --version | head -n 1
