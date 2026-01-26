@@ -1,10 +1,10 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
 BIN_DIR="$BASE_PATH/bin"
-PNPM_HOME="$BASE_PATH/pnpm"
-PNPM_STORE="$BASE_PATH/pnpm_store"
-export NVM_DIR="/opt/cached_resources/nvm"
-mkdir -p "$NVM_DIR" "$PNPM_HOME" "$PNPM_STORE"
+export NVM_DIR="$BASE_PATH/nvm"
+export PNPM_HOME="$BASE_PATH/pnpm"
+BIN_DIR="$BASE_PATH/bin"
+mkdir -p "$NVM_DIR" "$PNPM_HOME" "$BIN_DIR"
 mkdir -p  $BIN_DIR 
 
 # 1. 创建目标目录
@@ -51,44 +51,45 @@ cp -f usr/bin/xmllint $BIN_DIR/
 cp -f usr/lib/x86_64-linux-gnu/libxml2.so* $LIB_DIR/ 2>/dev/null || cp -f usr/lib/libxml2.so* $LIB_DIR/
 
 chmod +x $BIN_DIR/xmllint
-
-# 显式指定 NVM_DIR 环境变量，安装脚本会自动识别并装到这里
+# --- 2. 下载并安装 nvm ---
+# 显式指定 NVM_DIR，nvm 会将其内部组件安装到该目录
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | NVM_DIR="$NVM_DIR" bash
 
-# --- 3. 加载 nvm 并安装 Node ---
+# 加载 nvm 环境（当前进程生效）
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
+# --- 3. 安装 Node.js 24 ---
+echo ">>> 正在安装 Node.js 24..."
 nvm install 24
 
-# --- 4. 关键：将 node/npm 软链接到系统能找到的地方 ---
-# 这样你在扫描脚本里就不需要每次都加载 nvm 了
-BIN_DIR="/opt/cached_resources/bin"
-mkdir -p "$BIN_DIR"
+# 验证安装
+node_path=$(nvm which 24)
+echo "Node 实际路径: $node_path"
 
-# 获取 nvm 安装的实际 node 路径
-CURRENT_NODE_BIN=$(nvm which 24)
-CURRENT_NODE_DIR=$(dirname "$CURRENT_NODE_BIN")
+# --- 4. 激活 pnpm (参照官方 Corepack 方式) ---
+echo ">>> 正在通过 Corepack 激活 pnpm..."
+corepack enable pnpm
 
-ln -sf "$CURRENT_NODE_BIN" "$BIN_DIR/node"
-ln -sf "$CURRENT_NODE_DIR/npm" "$BIN_DIR/npm"
-ln -sf "$CURRENT_NODE_DIR/npx" "$BIN_DIR/npx"
-
-# --- 5. 设置全局缓存到挂载点 ---
-echo ">>> 正在持久化安装 pnpm..."
-# 使用 Corepack 安装 pnpm (Node 24 自带)
-export PNPM_HOME="$PNPM_HOME"
+# 关键：配置 pnpm 的持久化存储和全局目录
+# 确保 pnpm bin 目录也在持久化路径下
 export PATH="$PNPM_HOME:$PATH"
-corepack enable
-corepack prepare pnpm@latest --activate
+pnpm config set store-dir "$BASE_PATH/pnpm_store" --global
+pnpm config set global-bin-dir "$PNPM_HOME" --global
 
-# 建立 pnpm 软链接到全局 BIN
-ln -sf "$PNPM_HOME/pnpm" "$BIN_DIR/pnpm"
-ln -sf "$PNPM_HOME/pnpx" "$BIN_DIR/pnpx"
+# --- 5. 建立全局软链接 (方便 ut_scan.sh 直接调用) ---
+# 这样你的扫描脚本只需把 /opt/cached_resources/bin 加入 PATH 即可
+ln -sf "$node_path" "$BIN_DIR/node"
+ln -sf "$(dirname "$node_path")/npm" "$BIN_DIR/npm"
+ln -sf "$(dirname "$node_path")/npx" "$BIN_DIR/npx"
 
-# 关键：设置 pnpm 存储路径到挂载目录，实现真正的持久化缓存
-"$BIN_DIR/pnpm" config set store-dir "$PNPM_STORE" --global
-"$BIN_DIR/npm" config set cache "$BASE_PATH/npm_cache" --global
+# 找到 corepack 激活后的 pnpm 真实路径并链接
+PNPM_REAL_PATH=$(which pnpm)
+ln -sf "$PNPM_REAL_PATH" "$BIN_DIR/pnpm"
 
-echo ">>> 环境预装检查:"
-node -v
-pnpm -v
+# --- 验证结果 ---
+echo "--------------------------------------"
+echo "验证持久化工具链："
+"$BIN_DIR/node" -v
+"$BIN_DIR/pnpm" -v
+echo "所有工具已链接至: $BIN_DIR"
+echo "--------------------------------------"
