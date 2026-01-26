@@ -1,6 +1,8 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
 BIN_DIR="$BASE_PATH/bin"
+export NVM_DIR="/opt/cached_resources/nvm"
+mkdir -p "$NVM_DIR"
 mkdir -p  $BIN_DIR
 
 # 1. 创建目标目录
@@ -47,3 +49,30 @@ cp -f usr/bin/xmllint $BIN_DIR/
 cp -f usr/lib/x86_64-linux-gnu/libxml2.so* $LIB_DIR/ 2>/dev/null || cp -f usr/lib/libxml2.so* $LIB_DIR/
 
 chmod +x $BIN_DIR/xmllint
+
+# 显式指定 NVM_DIR 环境变量，安装脚本会自动识别并装到这里
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | NVM_DIR="$NVM_DIR" bash
+
+# --- 3. 加载 nvm 并安装 Node ---
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+nvm install 24
+
+# --- 4. 关键：将 node/npm 软链接到系统能找到的地方 ---
+# 这样你在扫描脚本里就不需要每次都加载 nvm 了
+BIN_DIR="/opt/cached_resources/bin"
+mkdir -p "$BIN_DIR"
+
+# 获取 nvm 安装的实际 node 路径
+CURRENT_NODE_BIN=$(nvm which 24)
+CURRENT_NODE_DIR=$(dirname "$CURRENT_NODE_BIN")
+
+ln -sf "$CURRENT_NODE_BIN" "$BIN_DIR/node"
+ln -sf "$CURRENT_NODE_DIR/npm" "$BIN_DIR/npm"
+ln -sf "$CURRENT_NODE_DIR/npx" "$BIN_DIR/npx"
+
+# --- 5. 设置全局缓存到挂载点 ---
+npm config set cache "/opt/cached_resources/npm_cache" --global
+
+echo ">>> Node 24 已持久化安装至 $NVM_DIR"
+node -v
