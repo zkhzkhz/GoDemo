@@ -32,11 +32,17 @@ export PYTHONUSERBASE=/opt/cached_resources/python/user_packages
     coverage
 
 
-# 先用 yum 下载，然后提取二进制，确保跨容器可用
 cd /tmp
-yum install -y yum-utils
-yumdownloader libxml2
-rpm2cpio libxml2-*.rpm | cpio -idmv
+# 下载 deb 包及其核心依赖
+apt-get update
+apt-get download libxml2-utils libxml2
+
+# 解压 deb 包内容
+find . -name "*.deb" -exec dpkg -x {} . \;
+
+# 拷贝二进制文件
 cp -f usr/bin/xmllint $BIN_DIR/
-# 赋予执行权限
+# 拷贝必要的动态链接库 (xmllint 运行需要 libxml2.so.2)
+cp -f usr/lib/x86_64-linux-gnu/libxml2.so* $LIB_DIR/ 2>/dev/null || cp -f usr/lib/libxml2.so* $LIB_DIR/
+
 chmod +x $BIN_DIR/xmllint
