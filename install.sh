@@ -14,3 +14,15 @@ rm miniconda.sh
 # 5. 配置软链接或环境变量
 ln -sf /opt/cached_resources/python/bin/python3 /usr/local/bin/python3
 ln -sf /opt/cached_resources/python/bin/pip3 /usr/local/bin/pip3
+
+# 1. 创建一个专门存放库的目录
+mkdir -p /opt/cached_resources/python/user_packages
+
+# 2. 设置环境变量（建议写入全局配置文件如 /etc/profile）
+export PYTHONUSERBASE=/opt/cached_resources/python/user_packages
+
+# 3. 使用 --user 安装
+/opt/cached_resources/python/bin/pip3 install --user \
+    pytest \
+    pytest-cov \
+    coverage
