@@ -1,6 +1,7 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
 BIN_DIR="$BASE_PATH/bin"
+mkdir -p  $BIN_DIR
 
 # 1. 创建目标目录
 mkdir -p /opt/cached_resources/python
