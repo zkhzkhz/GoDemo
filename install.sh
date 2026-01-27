@@ -94,44 +94,31 @@ echo "验证持久化工具链："
 echo "所有工具已链接至: $BIN_DIR"
 echo "--------------------------------------"
 
+echo ">>> 检查 jq 版本并尝试更新 (架构: amd64)..."
 
-echo ">>> 正在检查 jq 版本更新..."
+# 1. 获取最新 Release 的 Tag Name (例如 "jq-1.7.1")
+# 使用 jqlang 组织下的新仓库地址
+LATEST_TAG=$(curl -s https://api.github.com/repos/jqlang/jq/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 
-# 1. 获取 GitHub 上的最新版本号 (例如 "jq-1.7.1")
-LATEST_TAG=$(curl -s https://api.github.com/repos/stedolan/jq/releases/latest | grep '"tag_name":' | cut -d '"' -f 4)
-
-# 2. 获取本地已安装的版本 (如果不存在则设为空)
-CURRENT_VER=""
-if [ -f "$BIN_DIR/jq" ]; then
-    # jq --version 通常输出 "jq-1.7.1"
-    CURRENT_VER=$("$BIN_DIR/jq" --version 2>/dev/null)
+if [ -z "$LATEST_TAG" ]; then
+    echo ">>> [警告] 无法获取最新版本号，尝试使用静态备份地址..."
+    DOWNLOAD_URL="https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64"
+else
+    # 2. 拼接 amd64 专用的下载 URL
+    # 注意：新版本文件名通常为 jq-linux-amd64 或 jq-linux64
+    DOWNLOAD_URL="https://github.com/jqlang/jq/releases/download/${LATEST_TAG}/jq-linux-amd64"
+    echo ">>> 发现最新版本: $LATEST_TAG"
 fi
 
-# 3. 对比版本并决定是否下载
-if [ "$LATEST_TAG" != "$CURRENT_VER" ]; then
-    echo ">>> 检测到新版本: [本地: ${CURRENT_VER:-无}] -> [远程: $LATEST_TAG]"
-    
-    # 获取下载地址 (匹配 linux64)
-    DOWNLOAD_URL=$(curl -s https://api.github.com/repos/stedolan/jq/releases/latest | \
-                  grep "browser_download_url.*linux64" | \
-                  cut -d '"' -f 4)
+# 3. 下载并覆盖旧版本
+# -N 选项可以检查服务器文件是否比本地新，节省带宽
+curl -L "$DOWNLOAD_URL" -o "$BIN_DIR/jq"
 
-    if [ -n "$DOWNLOAD_URL" ]; then
-        echo ">>> 正在更新 jq..."
-        curl -L -s -S "$DOWNLOAD_URL" -o "$BIN_DIR/jq.tmp"
-        
-        # 验证下载的文件是否有效
-        chmod +x "$BIN_DIR/jq.tmp"
-        if "$BIN_DIR/jq.tmp" --version > /dev/null 2>&1; then
-            mv "$BIN_DIR/jq.tmp" "$BIN_DIR/jq"
-            echo "✅ jq 已成功更新至: $LATEST_TAG"
-        else
-            echo "❌ 下载的文件无效，取消更新。"
-            rm -f "$BIN_DIR/jq.tmp"
-        fi
-    else
-        echo "❌ 无法获取下载链接，跳过更新。"
-    fi
+if [ $? -eq 0 ]; then
+    chmod +x "$BIN_DIR/jq"
+    echo ">>> jq amd64 预置成功！版本信息："
+    "$BIN_DIR/jq" --version
 else
-    echo ">>> 当前 jq 已是最新版本 ($CURRENT_VER)，无需更新。"
+    echo ">>> [错误] 下载失败，请检查网络连接。"
+    exit 1
 fi
