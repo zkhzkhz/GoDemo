@@ -34,7 +34,10 @@ export PYTHONUSERBASE=/opt/cached_resources/python/user_packages
 /opt/cached_resources/python/bin/pip3 install --user \
     pytest \
     pytest-cov \
-    coverage
+    coverage \
+    diff-cover \
+    gocov \
+    gocov-xml
 
 
 cd /tmp
