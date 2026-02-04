@@ -35,10 +35,14 @@ export PYTHONUSERBASE=/opt/cached_resources/python/user_packages
     pytest \
     pytest-cov \
     coverage \
-    diff-cover \
-    gocov \
-    gocov-xml
+    diff-cover 
 
+# 1. 安装 gocov 和 gocov-xml
+export GOPATH=/opt/cached_resources/sast/gopath
+export PATH=$GOPATH/bin:$PATH
+
+go install github.com/axw/gocov/gocov@latest
+go install github.com/AlekSi/gocov-xml@latest
 
 cd /tmp
 # 下载 deb 包及其核心依赖
