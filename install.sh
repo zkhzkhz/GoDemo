@@ -1,11 +1,8 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
-BIN_DIR="$BASE_PATH/bin"
 export NVM_DIR="$BASE_PATH/nvm"
 export PNPM_HOME="$BASE_PATH/pnpm"
-BIN_DIR="$BASE_PATH/bin"
-mkdir -p "$NVM_DIR" "$PNPM_HOME" "$BIN_DIR"
-mkdir -p  $BIN_DIR 
+mkdir -p "$NVM_DIR" "$PNPM_HOME" 
 
 # 1. 创建目标目录
 mkdir -p /opt/cached_resources/python
@@ -53,13 +50,15 @@ apt-get download libxml2-utils libxml2
 find . -name "*.deb" -exec dpkg -x {} . \;
 
 # 拷贝二进制文件
-cp -f usr/bin/xmllint $BIN_DIR/
+cp -f usr/bin/xmllint $BASE_PATH/tools/common
 # 拷贝必要的动态链接库 (xmllint 运行需要 libxml2.so.2)
 cp -f usr/lib/x86_64-linux-gnu/libxml2.so* $LIB_DIR/ 2>/dev/null || cp -f usr/lib/libxml2.so* $LIB_DIR/
 
-chmod +x $BIN_DIR/xmllint
+chmod +x $BASE_PATH/tools/common/xmllint
+
 # --- 2. 下载并安装 nvm ---
 # 显式指定 NVM_DIR，nvm 会将其内部组件安装到该目录
+mkdir -p "$BASE_PATH/nodejs"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | NVM_DIR="$NVM_DIR" bash
 
 # 加载 nvm 环境（当前进程生效）
@@ -85,20 +84,20 @@ pnpm config set global-bin-dir "$PNPM_HOME" --global
 
 # --- 5. 建立全局软链接 (方便 ut_scan.sh 直接调用) ---
 # 这样你的扫描脚本只需把 /opt/cached_resources/bin 加入 PATH 即可
-ln -sf "$node_path" "$BIN_DIR/node"
-ln -sf "$(dirname "$node_path")/npm" "$BIN_DIR/npm"
-ln -sf "$(dirname "$node_path")/npx" "$BIN_DIR/npx"
+ln -sf "$node_path" "$BASE_PATH/nodejs"
+ln -sf "$(dirname "$node_path")/npm" "$BASE_PATH/nodejs/npm"
+ln -sf "$(dirname "$node_path")/npx" "$BASE_PATH/nodejs/npx"
 
 # 找到 corepack 激活后的 pnpm 真实路径并链接
 PNPM_REAL_PATH=$(which pnpm)
-ln -sf "$PNPM_REAL_PATH" "$BIN_DIR/pnpm"
+ln -sf "$PNPM_REAL_PATH" "$BASE_PATH/nodejs/pnpm"
 
 # --- 验证结果 ---
 echo "--------------------------------------"
 echo "验证持久化工具链："
-"$BIN_DIR/node" -v
-"$BIN_DIR/pnpm" -v
-echo "所有工具已链接至: $BIN_DIR"
+"$BASE_PATH/nodejs/node" -v
+"$BASE_PATH/nodejs/pnpm" -v
+echo "所有工具已链接至: $BASE_PATH/nodejs"
 echo "--------------------------------------"
 
 echo ">>> 检查 jq 版本并尝试更新 (架构: amd64)..."
@@ -119,12 +118,12 @@ fi
 
 # 3. 下载并覆盖旧版本
 # -N 选项可以检查服务器文件是否比本地新，节省带宽
-curl -L "$DOWNLOAD_URL" -o "$BIN_DIR/jq"
+curl -L "$DOWNLOAD_URL" -o "$BASE_PATH/tools/common/jq"
 
 if [ $? -eq 0 ]; then
-    chmod +x "$BIN_DIR/jq"
+    chmod +x "$BASE_PATH/tools/common/jq"
     echo ">>> jq amd64 预置成功！版本信息："
-    "$BIN_DIR/jq" --version
+    "$BASE_PATH/tools/common/jq" --version
 else
     echo ">>> [错误] 下载失败，请检查网络连接。"
     exit 1
