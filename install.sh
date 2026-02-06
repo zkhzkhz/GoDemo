@@ -288,7 +288,7 @@ fi
 rm -rf "$TMP_DIR"
 
 echo ">>> 正在检查 SCC 版本并尝试更新..."
-
+mkdir -p $BASE_PATH/tools/scc
 # --- 2. 获取最新版本号 (grep + sed) ---
 # 提取纯数字版本号，例如 3.6.0
 LATEST_TAG=$(curl -s https://api.github.com/repos/boyter/scc/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
