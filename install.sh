@@ -179,15 +179,15 @@ fi
 # 清理临时目录
 rm -rf "$TMP_DIR"
 
-echo ">>> 正在检查 Git Credential Manager 并尝试安装..."
+echo ">>> 正在检查 Git Credential Manager (GCM) 版本并尝试更新..."
 
-# --- 2. 获取最新版本号 (grep + sed 替代 jq) ---
-# 官方仓库: git-ecosystem/git-credential-manager
+# --- 2. 获取最新版本号 (使用 grep + sed 替代 jq) ---
+# 目标：从 tag_name 中提取 2.7.1
 LATEST_TAG=$(curl -s https://api.github.com/repos/git-ecosystem/git-credential-manager/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
 
 if [ -z "$LATEST_TAG" ]; then
-    echo ">>> [警告] 无法通过 API 获取版本号，使用默认版本 v2.6.1..."
-    GCM_VER="2.6.1"
+    echo ">>> [警告] 无法通过 API 获取版本号，使用静态版本 2.7.1..."
+    GCM_VER="2.7.1"
 else
     GCM_VER="$LATEST_TAG"
     echo ">>> 发现 GCM 最新版本: v$GCM_VER"
@@ -202,36 +202,36 @@ case $ARCH in
 esac
 
 # --- 4. 构造下载链接 ---
-# 格式示例: gcm-linux_x64.2.6.1.tar.gz
-DOWNLOAD_URL="https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VER}/gcm-linux_${GCM_ARCH}.${GCM_VER}.tar.gz"
+# 适配最新格式: gcm-linux-<arch>-<version>.tar.gz
+# 示例: https://github.com/git-ecosystem/git-credential-manager/releases/download/v2.7.1/gcm-linux-x64-2.7.1.tar.gz
+DOWNLOAD_URL="https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VER}/gcm-linux-${GCM_ARCH}-${GCM_VER}.tar.gz"
 
 echo ">>> 正在下载: $DOWNLOAD_URL"
 TMP_DIR=$(mktemp -d)
 curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/gcm.tar.gz"
 
 if [ $? -eq 0 ]; then
-    # 5. 解压并安装
-    # GCM 解压后是一堆文件，建议在 BIN_DIR 下创建一个子目录，然后链接主程序
-    GCM_INSTALL_DIR="$BASE_PATH/gcm"
-    mkdir -p "$GCM_INSTALL_DIR"
-    tar -xzf "$TMP_DIR/gcm.tar.gz" -C "$GCM_INSTALL_DIR"
+    # --- 5. 解压并安装 ---
+    # GCM 非单文件程序，需独立目录存放依赖库
+    GCM_HOME="$BASE_PATH/tools/gcm"
+    mkdir -p "$GCM_HOME"
     
-    # 建立核心二进制文件的软链接
-    chmod +x "$GCM_INSTALL_DIR/git-credential-manager"
+    # 清理旧版本并解压到专用目录
+    rm -rf "$GCM_HOME"/*
+    tar -xzf "$TMP_DIR/gcm.tar.gz" -C "$GCM_HOME"
     
-    # 6. 配置 Git 默认使用该管理器
-    # 注意：这步通常在具体执行环境执行，也可以在这里做全局配置
-    # "$GCM_INSTALL_DIR/git-credential-manager" configure --force
+    # 建立主程序软链接到 BIN_DIR，方便全局调用
+    chmod +x "$GCM_HOME/git-credential-manager"
     
-    echo ">>> GCM $GCM_ARCH 预置成功！"
-    "$GCM_INSTALL_DIR/git-credential-manager" --version
+    echo ">>> GCM $GCM_ARCH 预置成功！版本信息："
+    "$GCM_HOME/git-credential-manager" --version
 else
-    echo ">>> [错误] 下载失败，请检查网络。"
+    echo ">>> [错误] 下载失败，请确认 URL 是否正确。"
     rm -rf "$TMP_DIR"
     exit 1
 fi
 
-# 清理
+# 清理临时文件
 rm -rf "$TMP_DIR"
 
 echo ">>> 正在检查 Kustomize 版本并尝试更新..."
@@ -317,7 +317,7 @@ curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/scc.tar.gz"
 
 if [ $? -eq 0 ]; then
     # 5. 解压并安装
-    mkdir -p $BASE_PATH/tools/common/scc
+    mkdir -p $BASE_PATH/tools/scc
     tar -xzf "$TMP_DIR/scc.tar.gz" -C "$BASE_PATH/tools/scc"
     chmod +x "$BASE_PATH/tools/scc/scc"
     
