@@ -179,4 +179,155 @@ fi
 # 清理临时目录
 rm -rf "$TMP_DIR"
 
+echo ">>> 正在检查 Git Credential Manager 并尝试安装..."
 
+# --- 2. 获取最新版本号 (grep + sed 替代 jq) ---
+# 官方仓库: git-ecosystem/git-credential-manager
+LATEST_TAG=$(curl -s https://api.github.com/repos/git-ecosystem/git-credential-manager/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+
+if [ -z "$LATEST_TAG" ]; then
+    echo ">>> [警告] 无法通过 API 获取版本号，使用默认版本 v2.6.1..."
+    GCM_VER="2.6.1"
+else
+    GCM_VER="$LATEST_TAG"
+    echo ">>> 发现 GCM 最新版本: v$GCM_VER"
+fi
+
+# --- 3. 识别系统架构 ---
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)  GCM_ARCH="x64" ;;
+    aarch64) GCM_ARCH="arm64" ;;
+    *)       echo ">>> [错误] 不支持的架构: $ARCH"; exit 1 ;;
+esac
+
+# --- 4. 构造下载链接 ---
+# 格式示例: gcm-linux_x64.2.6.1.tar.gz
+DOWNLOAD_URL="https://github.com/git-ecosystem/git-credential-manager/releases/download/v${GCM_VER}/gcm-linux_${GCM_ARCH}.${GCM_VER}.tar.gz"
+
+echo ">>> 正在下载: $DOWNLOAD_URL"
+TMP_DIR=$(mktemp -d)
+curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/gcm.tar.gz"
+
+if [ $? -eq 0 ]; then
+    # 5. 解压并安装
+    # GCM 解压后是一堆文件，建议在 BIN_DIR 下创建一个子目录，然后链接主程序
+    GCM_INSTALL_DIR="$BASE_PATH/gcm"
+    mkdir -p "$GCM_INSTALL_DIR"
+    tar -xzf "$TMP_DIR/gcm.tar.gz" -C "$GCM_INSTALL_DIR"
+    
+    # 建立核心二进制文件的软链接
+    chmod +x "$GCM_INSTALL_DIR/git-credential-manager"
+    
+    # 6. 配置 Git 默认使用该管理器
+    # 注意：这步通常在具体执行环境执行，也可以在这里做全局配置
+    # "$GCM_INSTALL_DIR/git-credential-manager" configure --force
+    
+    echo ">>> GCM $GCM_ARCH 预置成功！"
+    "$GCM_INSTALL_DIR/git-credential-manager" --version
+else
+    echo ">>> [错误] 下载失败，请检查网络。"
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
+# 清理
+rm -rf "$TMP_DIR"
+
+echo ">>> 正在检查 Kustomize 版本并尝试更新..."
+
+# --- 2. 获取最新版本号 (grep + sed) ---
+# 官方仓库: kubernetes-sigs/kustomize
+# 注意：kustomize 的 tag 格式通常是 kustomize/v5.x.x
+LATEST_TAG_FULL=$(curl -s https://api.github.com/repos/kubernetes-sigs/kustomize/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+# 提取纯版本号部分 (例如从 kustomize/v5.4.1 提取 v5.4.1)
+LATEST_TAG=$(echo $LATEST_TAG_FULL | sed -E 's/.*(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+
+if [ -z "$LATEST_TAG" ]; then
+    echo ">>> [警告] 无法获取版本号，使用静态备份版本 v5.4.1..."
+    K_TAG="v5.4.1"
+else
+    K_TAG="$LATEST_TAG"
+    echo ">>> 发现 Kustomize 最新版本: $K_TAG"
+fi
+
+# --- 3. 识别系统架构 ---
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)  K_ARCH="amd64" ;;
+    aarch64) K_ARCH="arm64" ;;
+    *)       echo ">>> [错误] 不支持的架构: $ARCH"; exit 1 ;;
+esac
+
+# --- 4. 构造下载链接 ---
+# 格式示例: https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.4.1/kustomize_v5.4.1_linux_amd64.tar.gz
+# 注意 URL 中的路径需要对 / 进行转义，或者直接使用拼接好的 tag
+DOWNLOAD_URL="https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${K_TAG}/kustomize_${K_TAG}_linux_${K_ARCH}.tar.gz"
+
+echo ">>> 正在下载: $DOWNLOAD_URL"
+TMP_DIR=$(mktemp -d)
+curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/kustomize.tar.gz"
+
+if [ $? -eq 0 ]; then
+    # 5. 解压并安装
+    tar -xzf "$TMP_DIR/kustomize.tar.gz" -C "$BASE_PATH/tools/common"
+    chmod +x "$BASE_PATH/tools/common/kustomize"
+    
+    echo ">>> Kustomize $K_ARCH 预置成功！版本信息："
+    "$BASE_PATH/tools/common/kustomize" version
+else
+    echo ">>> [错误] 下载失败，请检查网络。"
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
+# 清理
+rm -rf "$TMP_DIR"
+
+echo ">>> 正在检查 SCC 版本并尝试更新..."
+
+# --- 2. 获取最新版本号 (grep + sed) ---
+# 官方仓库: boyter/scc
+LATEST_TAG=$(curl -s https://api.github.com/repos/boyter/scc/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+
+if [ -z "$LATEST_TAG" ]; then
+    echo ">>> [警告] 无法获取版本号，使用静态备份版本 v3.5.0..."
+    S_VER="3.5.0"
+else
+    S_VER="$LATEST_TAG"
+    echo ">>> 发现 SCC 最新版本: v$S_VER"
+fi
+
+# --- 3. 识别系统架构 ---
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)  S_ARCH="x86_64-unknown-linux" ;;
+    aarch64) S_ARCH="arm64-unknown-linux" ;;
+    *)       echo ">>> [错误] 不支持的架构: $ARCH"; exit 1 ;;
+esac
+
+# --- 4. 构造下载链接 ---
+# 格式示例: https://github.com/boyter/scc/releases/download/v3.5.0/scc_v3.5.0_x86_64-unknown-linux.tar.gz
+DOWNLOAD_URL="https://github.com/boyter/scc/releases/download/v${S_VER}/scc_${S_VER}_${S_ARCH}.tar.gz"
+
+echo ">>> 正在下载: $DOWNLOAD_URL"
+TMP_DIR=$(mktemp -d)
+curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/scc.tar.gz"
+
+if [ $? -eq 0 ]; then
+    # 5. 解压并安装
+    mkdir -p $BASE_PATH/tools/common/scc
+    tar -xzf "$TMP_DIR/scc.tar.gz" -C "$BASE_PATH/tools/scc"
+    chmod +x "$BASE_PATH/tools/scc/scc"
+    
+    echo ">>> SCC $S_ARCH 预置成功！版本信息："
+    "$BASE_PATH/tools/scc/scc" --version
+else
+    echo ">>> [错误] 下载失败，请检查网络。"
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
+# 清理
+rm -rf "$TMP_DIR"
