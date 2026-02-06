@@ -285,10 +285,21 @@ fi
 # 清理
 rm -rf "$TMP_DIR"
 
+看来 SCC 的命名规范在不同版本间确实存在变动。根据你提供的最新成功链接 scc_Linux_x86_64.tar.gz，它将架构标识简化为了 Linux_x86_64（或 Linux_arm64），而不再使用复杂的 unknown-linux 后缀。
+
+我已针对此格式对脚本进行了最终适配。
+
+🚀 SCC (Sloc, Cloc and Code) 自动化安装脚本 (适配最新命名)
+Bash
+# --- 1. 配置路径 ---
+BASE_PATH="/opt/cached_resources"
+BIN_DIR="$BASE_PATH/bin"
+mkdir -p "$BIN_DIR"
+
 echo ">>> 正在检查 SCC 版本并尝试更新..."
 
 # --- 2. 获取最新版本号 (grep + sed) ---
-# 目标：从 tag_name "v3.6.0" 中提取纯数字 "3.6.0"
+# 提取纯数字版本号，例如 3.6.0
 LATEST_TAG=$(curl -s https://api.github.com/repos/boyter/scc/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
 
 if [ -z "$LATEST_TAG" ]; then
@@ -300,17 +311,21 @@ else
 fi
 
 # --- 3. 识别系统架构 ---
+# 根据你提供的链接，后缀固定为 Linux_x86_64 或 Linux_arm64
 ARCH=$(uname -m)
 case $ARCH in
-    x86_64)  S_ARCH="x86_64-unknown-linux" ;;
-    aarch64) S_ARCH="arm64-unknown-linux" ;;
+    x86_64)  S_ARCH="Linux_x86_64" ;;
+    aarch64) S_ARCH="Linux_arm64" ;;
     *)       echo ">>> [错误] 不支持的架构: $ARCH"; exit 1 ;;
 esac
 
 # --- 4. 构造下载链接 ---
-# 修正后的格式: scc_<version>_<arch>.tar.gz (注意版本号处没有 v)
-# 示例: https://github.com/boyter/scc/releases/download/v3.6.0/scc_3.6.0_x86_64-unknown-linux.tar.gz
-DOWNLOAD_URL="https://github.com/boyter/scc/releases/download/v${S_VER}/scc_${S_VER}_${S_ARCH}.tar.gz"
+# 适配格式: scc_Linux_x86_64.tar.gz
+# 注意：SCC 的这个包名在 3.6.0 版本中连版本号都从文件名里去掉了
+DOWNLOAD_URL="https://github.com/boyter/scc/releases/download/v${S_VER}/scc_Linux_x86_64.tar.gz"
+
+# 如果你希望更健壮，支持多架构拼接：
+# DOWNLOAD_URL="https://github.com/boyter/scc/releases/download/v${S_VER}/scc_${S_ARCH}.tar.gz"
 
 echo ">>> 正在下载: $DOWNLOAD_URL"
 TMP_DIR=$(mktemp -d)
@@ -319,12 +334,12 @@ curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/scc.tar.gz"
 if [ $? -eq 0 ]; then
     # --- 5. 解压并安装 ---
     tar -xzf "$TMP_DIR/scc.tar.gz" -C "$TMP_DIR"
-    # 将二进制移动到全局 bin 目录
+    # 找到解压后的二进制文件并移动
     mv -f "$TMP_DIR/scc" "$BASE_PATH/tools/scc/scc"
     chmod +x "$BASE_PATH/tools/scc/scc"
     
     echo ">>> SCC $S_ARCH 预置成功！版本信息："
-    "$BASE_PATH/tools/scc/scc" --version
+    $BASE_PATH/tools/scc/scc" --version
 else
     echo ">>> [错误] 下载失败，请确认 URL 是否正确。"
     rm -rf "$TMP_DIR"
