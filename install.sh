@@ -288,15 +288,15 @@ rm -rf "$TMP_DIR"
 echo ">>> 正在检查 SCC 版本并尝试更新..."
 
 # --- 2. 获取最新版本号 (grep + sed) ---
-# 官方仓库: boyter/scc
+# 目标：从 tag_name "v3.6.0" 中提取纯数字 "3.6.0"
 LATEST_TAG=$(curl -s https://api.github.com/repos/boyter/scc/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
 
 if [ -z "$LATEST_TAG" ]; then
-    echo ">>> [警告] 无法获取版本号，使用静态备份版本 v3.5.0..."
-    S_VER="3.5.0"
+    echo ">>> [警告] 无法获取版本号，使用静态版本 3.6.0..."
+    S_VER="3.6.0"
 else
     S_VER="$LATEST_TAG"
-    echo ">>> 发现 SCC 最新版本: v$S_VER"
+    echo ">>> 发现 SCC 最新版本: $S_VER"
 fi
 
 # --- 3. 识别系统架构 ---
@@ -308,7 +308,8 @@ case $ARCH in
 esac
 
 # --- 4. 构造下载链接 ---
-# 格式示例: https://github.com/boyter/scc/releases/download/v3.5.0/scc_v3.5.0_x86_64-unknown-linux.tar.gz
+# 修正后的格式: scc_<version>_<arch>.tar.gz (注意版本号处没有 v)
+# 示例: https://github.com/boyter/scc/releases/download/v3.6.0/scc_3.6.0_x86_64-unknown-linux.tar.gz
 DOWNLOAD_URL="https://github.com/boyter/scc/releases/download/v${S_VER}/scc_${S_VER}_${S_ARCH}.tar.gz"
 
 echo ">>> 正在下载: $DOWNLOAD_URL"
@@ -316,15 +317,16 @@ TMP_DIR=$(mktemp -d)
 curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/scc.tar.gz"
 
 if [ $? -eq 0 ]; then
-    # 5. 解压并安装
-    mkdir -p $BASE_PATH/tools/scc
-    tar -xzf "$TMP_DIR/scc.tar.gz" -C "$BASE_PATH/tools/scc"
+    # --- 5. 解压并安装 ---
+    tar -xzf "$TMP_DIR/scc.tar.gz" -C "$TMP_DIR"
+    # 将二进制移动到全局 bin 目录
+    mv -f "$TMP_DIR/scc" "$BASE_PATH/tools/scc/scc"
     chmod +x "$BASE_PATH/tools/scc/scc"
     
     echo ">>> SCC $S_ARCH 预置成功！版本信息："
     "$BASE_PATH/tools/scc/scc" --version
 else
-    echo ">>> [错误] 下载失败，请检查网络。"
+    echo ">>> [错误] 下载失败，请确认 URL 是否正确。"
     rm -rf "$TMP_DIR"
     exit 1
 fi
