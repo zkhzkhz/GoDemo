@@ -100,6 +100,8 @@ echo "验证持久化工具链："
 echo "所有工具已链接至: $BASE_PATH/nodejs"
 echo "--------------------------------------"
 
+mkdir -p $BASE_PATH/tools/common
+
 echo ">>> 检查 jq 版本并尝试更新 (架构: amd64)..."
 
 # 1. 获取最新 Release 的 Tag Name (例如 "jq-1.7.1")
