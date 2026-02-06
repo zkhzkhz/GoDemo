@@ -285,17 +285,6 @@ fi
 # 清理
 rm -rf "$TMP_DIR"
 
-看来 SCC 的命名规范在不同版本间确实存在变动。根据你提供的最新成功链接 scc_Linux_x86_64.tar.gz，它将架构标识简化为了 Linux_x86_64（或 Linux_arm64），而不再使用复杂的 unknown-linux 后缀。
-
-我已针对此格式对脚本进行了最终适配。
-
-🚀 SCC (Sloc, Cloc and Code) 自动化安装脚本 (适配最新命名)
-Bash
-# --- 1. 配置路径 ---
-BASE_PATH="/opt/cached_resources"
-BIN_DIR="$BASE_PATH/bin"
-mkdir -p "$BIN_DIR"
-
 echo ">>> 正在检查 SCC 版本并尝试更新..."
 
 # --- 2. 获取最新版本号 (grep + sed) ---
