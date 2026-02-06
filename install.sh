@@ -164,7 +164,7 @@ curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/gitleaks.tar.gz"
 if [ $? -eq 0 ]; then
     # 解压并将二进制文件移动到你的 BIN_DIR
     tar -xzf "$TMP_DIR/gitleaks.tar.gz" -C "$TMP_DIR"
-    mkdir -p "$BASE_PATH/tools/gitleaks/gitleaks"
+    mkdir -p "$BASE_PATH/tools/gitleaks"
     mv -f "$TMP_DIR/gitleaks" "$BASE_PATH/tools/gitleaks/gitleaks"
     chmod +x "$BASE_PATH/tools/gitleaks/gitleaks"
     
