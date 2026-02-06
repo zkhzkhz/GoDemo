@@ -330,7 +330,7 @@ if [ $? -eq 0 ]; then
     echo ">>> SCC $S_ARCH 预置成功！版本信息："
     $BASE_PATH/tools/scc/scc" --version
 else
-    echo ">>> [错误] 下载失败，请确认 URL 是否正确。"
+    echo "下载失败"
     rm -rf "$TMP_DIR"
     exit 1
 fi
