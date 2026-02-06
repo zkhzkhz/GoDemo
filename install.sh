@@ -128,3 +128,55 @@ else
     echo ">>> [错误] 下载失败，请检查网络连接。"
     exit 1
 fi
+
+echo ">>> 正在检查 Gitleaks 版本并尝试更新..."
+
+# --- 2. 获取最新版本号 (使用 grep + sed 替代 jq) ---
+# 访问 gitleaks 官方仓库获取最新 Release 标签
+LATEST_TAG=$(curl -s https://api.github.com/repos/gitleaks/gitleaks/releases/latest | grep '"tag_name":' | sed -E 's/.*"v?([^"]+)".*/\1/')
+
+if [ -z "$LATEST_TAG" ]; then
+    echo ">>> [警告] 无法通过 API 获取版本号，尝试下载静态版本 v8.23.1..."
+    G_VER="8.23.1"
+    G_TAG="v8.23.1"
+else
+    G_VER="$LATEST_TAG"
+    G_TAG="v$LATEST_TAG"
+    echo ">>> 发现 Gitleaks 最新版本: $G_TAG"
+fi
+
+# --- 3. 识别系统架构 ---
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)  G_ARCH="x64" ;;
+    aarch64) G_ARCH="arm64" ;;
+    *)       echo ">>> [错误] 不支持的架构: $ARCH"; exit 1 ;;
+esac
+
+# --- 4. 构造下载链接并执行下载 ---
+# Gitleaks 格式示例: gitleaks_8.23.1_linux_x64.tar.gz
+DOWNLOAD_URL="https://github.com/gitleaks/gitleaks/releases/download/${G_TAG}/gitleaks_${G_VER}_linux_${G_ARCH}.tar.gz"
+
+echo ">>> 正在下载: $DOWNLOAD_URL"
+TMP_DIR=$(mktemp -d)
+curl -L "$DOWNLOAD_URL" -o "$TMP_DIR/gitleaks.tar.gz"
+
+if [ $? -eq 0 ]; then
+    # 解压并将二进制文件移动到你的 BIN_DIR
+    tar -xzf "$TMP_DIR/gitleaks.tar.gz" -C "$TMP_DIR"
+    mkdir -p "$BASE_PATH/tools/gitleaks/gitleaks"
+    mv -f "$TMP_DIR/gitleaks" "$BASE_PATH/tools/gitleaks/gitleaks"
+    chmod +x "$BASE_PATH/tools/gitleaks/gitleaks"
+    
+    echo ">>> Gitleaks $G_ARCH 预置成功！版本信息："
+    "$BASE_PATH/tools/gitleaks/gitleaks" version
+else
+    echo ">>> [错误] 下载失败，请检查网络。"
+    rm -rf "$TMP_DIR"
+    exit 1
+fi
+
+# 清理临时目录
+rm -rf "$TMP_DIR"
+
+
