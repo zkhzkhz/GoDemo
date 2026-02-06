@@ -328,7 +328,7 @@ if [ $? -eq 0 ]; then
     chmod +x "$BASE_PATH/tools/scc/scc"
     
     echo ">>> SCC $S_ARCH 预置成功！版本信息："
-    $BASE_PATH/tools/scc/scc" --version
+    "$BASE_PATH/tools/scc/scc" --version
 else
     echo "下载失败"
     rm -rf "$TMP_DIR"
