@@ -25,11 +25,11 @@ echo "Node 实际路径: $node_path"
 
 # --- 4. 激活 pnpm (参照官方 Corepack 方式) ---
 echo ">>> 正在通过 Corepack 激活 pnpm..."
+export PATH="$PNPM_HOME:$PATH"
 corepack enable pnpm
 
 # 关键：配置 pnpm 的持久化存储和全局目录
 # 确保 pnpm bin 目录也在持久化路径下
-export PATH="$PNPM_HOME:$PATH"
 pnpm config set store-dir "$BASE_PATH/sast/nodejs/pnpm_store" --global
 pnpm config set global-bin-dir "$PNPM_HOME" --global
 
