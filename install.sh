@@ -31,6 +31,7 @@ export PYTHONUSERBASE=/opt/cached_resources/sast/python/user_packages
 /opt/cached_resources/sast/python/bin/pip3 install --user \
     pytest \
     pytest-cov \
+    bandit \
     coverage \
     diff-cover
 
