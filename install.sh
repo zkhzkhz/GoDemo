@@ -1,7 +1,7 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
 export NVM_DIR="$BASE_PATH/sast/nodejs/nvm"
-export PNPM_HOME="$BASE_PATH/sast/nodejs/pnpm"
+export PNPM_HOME="$BASE_PATH/sast/nodejs"
 mkdir -p "$NVM_DIR" "$PNPM_HOME" 
 
 # 1. 创建目标目录
