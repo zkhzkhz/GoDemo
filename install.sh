@@ -1,34 +1,34 @@
 # --- 配置路径 ---
 BASE_PATH="/opt/cached_resources"
-export NVM_DIR="$BASE_PATH/nvm"
-export PNPM_HOME="$BASE_PATH/pnpm"
+export NVM_DIR="$BASE_PATH/sast/nodejs/nvm"
+export PNPM_HOME="$BASE_PATH/sast/nodejs/pnpm"
 mkdir -p "$NVM_DIR" "$PNPM_HOME" 
 
 # 1. 创建目标目录
-mkdir -p /opt/cached_resources/python
+mkdir -p /opt/cached_resources/sast/python
 
 # 2. 下载 Miniconda (这是获取 Python+Pip 最便捷的独立包)
 # 如果是内网环境，请提前下载好该 sh 文件并放入制品仓库
 wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
 
 # 3. 安装到指定目录 (-b 为静默安装, -p 为路径)
-bash miniconda.sh -b -u -p /opt/cached_resources/python
+bash miniconda.sh -b -u -p /opt/cached_resources/sast/python
 
 # 4. 清理安装包
 rm miniconda.sh
 
 # 5. 配置软链接或环境变量
-ln -sf /opt/cached_resources/python/bin/python3 /usr/local/bin/python3
-ln -sf /opt/cached_resources/python/bin/pip3 /usr/local/bin/pip3
+ln -sf /opt/cached_resources/sast/python/bin/python3 /usr/local/bin/python3
+ln -sf /opt/cached_resources/sast/python/bin/pip3 /usr/local/bin/pip3
 
 # 1. 创建一个专门存放库的目录
-mkdir -p /opt/cached_resources/python/user_packages
+mkdir -p /opt/cached_resources/sast/python/user_packages
 
 # 2. 设置环境变量（建议写入全局配置文件如 /etc/profile）
-export PYTHONUSERBASE=/opt/cached_resources/python/user_packages
+export PYTHONUSERBASE=/opt/cached_resources/sast/python/user_packages
 
 # 3. 使用 --user 安装
-/opt/cached_resources/python/bin/pip3 install --user \
+/opt/cached_resources/sast/python/bin/pip3 install --user \
     pytest \
     pytest-cov \
     coverage \
@@ -58,7 +58,6 @@ chmod +x $BASE_PATH/tools/common/xmllint
 
 # --- 2. 下载并安装 nvm ---
 # 显式指定 NVM_DIR，nvm 会将其内部组件安装到该目录
-mkdir -p "$BASE_PATH/nodejs"
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | NVM_DIR="$NVM_DIR" bash
 
 # 加载 nvm 环境（当前进程生效）
@@ -79,25 +78,25 @@ corepack enable pnpm
 # 关键：配置 pnpm 的持久化存储和全局目录
 # 确保 pnpm bin 目录也在持久化路径下
 export PATH="$PNPM_HOME:$PATH"
-pnpm config set store-dir "$BASE_PATH/pnpm_store" --global
+pnpm config set store-dir "$BASE_PATH/sast/nodejs/pnpm_store" --global
 pnpm config set global-bin-dir "$PNPM_HOME" --global
 
 # --- 5. 建立全局软链接 (方便 ut_scan.sh 直接调用) ---
 # 这样你的扫描脚本只需把 /opt/cached_resources/bin 加入 PATH 即可
-ln -sf "$node_path" "$BASE_PATH/nodejs"
-ln -sf "$(dirname "$node_path")/npm" "$BASE_PATH/nodejs/npm"
-ln -sf "$(dirname "$node_path")/npx" "$BASE_PATH/nodejs/npx"
+ln -sf "$node_path" "$BASE_PATH//sast/nodejs"
+ln -sf "$(dirname "$node_path")/npm" "$BASE_PATH/sast/nodejs/npm"
+ln -sf "$(dirname "$node_path")/npx" "$BASE_PATH/sast/nodejs/npx"
 
 # 找到 corepack 激活后的 pnpm 真实路径并链接
 PNPM_REAL_PATH=$(which pnpm)
-ln -sf "$PNPM_REAL_PATH" "$BASE_PATH/nodejs/pnpm"
+ln -sf "$PNPM_REAL_PATH" "$BASE_PATH/sast/nodejs/pnpm"
 
 # --- 验证结果 ---
 echo "--------------------------------------"
 echo "验证持久化工具链："
-"$BASE_PATH/nodejs/node" -v
-"$BASE_PATH/nodejs/pnpm" -v
-echo "所有工具已链接至: $BASE_PATH/nodejs"
+"$BASE_PATH/sast/nodejs/node" -v
+"$BASE_PATH/sast/nodejs/pnpm" -v
+echo "所有工具已链接至: $BASE_PATH/sast/nodejs"
 echo "--------------------------------------"
 
 mkdir -p $BASE_PATH/tools/common
