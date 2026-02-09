@@ -4,7 +4,7 @@ export NVM_DIR="$BASE_PATH/sast/nodejs/nvm"
 export PNPM_HOME="$BASE_PATH/sast/nodejs"
 mkdir -p "$NVM_DIR" "$PNPM_HOME"
 
-
+export PATH="$PNPM_HOME:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 # 1. 创建目标目录
 mkdir -p /opt/cached_resources/sast/python
 
