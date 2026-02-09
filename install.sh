@@ -37,9 +37,6 @@ export PYTHONUSERBASE=/opt/cached_resources/sast/python/user_packages
 
 # 1. 安装 gocov 和 gocov-xml
 export GOPATH=/opt/cached_resources/sast/gopath
-echo ">>> 清理旧的 pnpm 配置..."
-rm -rf ~/.pnpmrc
-rm -rf "$BASE_PATH/pnpm" # 删掉报错信息中那个错误的路径
 export PATH=$GOPATH/bin:$PATH
 
 go install github.com/axw/gocov/gocov@latest
@@ -74,7 +71,9 @@ nvm install 24
 # 验证安装
 node_path=$(nvm which 24)
 echo "Node 实际路径: $node_path"
-
+echo ">>> 清理旧的 pnpm 配置..."
+rm -rf ~/.pnpmrc
+rm -rf "$BASE_PATH/pnpm" # 删掉报错信息中那个错误的路径
 export PATH="$PNPM_HOME:$PATH"
 
 # --- 4. 激活 pnpm (参照官方 Corepack 方式) ---
