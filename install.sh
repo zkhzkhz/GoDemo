@@ -82,11 +82,10 @@ which pnpm
 # 关键：配置 pnpm 的持久化存储和全局目录
 # 确保 pnpm bin 目录也在持久化路径下
 pnpm config set store-dir "$BASE_PATH/sast/nodejs/pnpm_store" --global
-pnpm config set global-bin-dir "$PNPM_HOME" --global
 
 # --- 5. 建立全局软链接 (方便 ut_scan.sh 直接调用) ---
 # 这样你的扫描脚本只需把 /opt/cached_resources/bin 加入 PATH 即可
-ln -sf "$node_path" "$BASE_PATH//sast/nodejs"
+ln -sf "$node_path" "$BASE_PATH/sast/nodejs"
 ln -sf "$(dirname "$node_path")/npm" "$BASE_PATH/sast/nodejs/npm"
 ln -sf "$(dirname "$node_path")/npx" "$BASE_PATH/sast/nodejs/npx"
 
