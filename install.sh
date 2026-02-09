@@ -37,6 +37,9 @@ export PYTHONUSERBASE=/opt/cached_resources/sast/python/user_packages
 
 # 1. 安装 gocov 和 gocov-xml
 export GOPATH=/opt/cached_resources/sast/gopath
+echo ">>> 清理旧的 pnpm 配置..."
+rm -rf ~/.pnpmrc
+rm -rf "$BASE_PATH/pnpm" # 删掉报错信息中那个错误的路径
 export PATH=$GOPATH/bin:$PATH
 
 go install github.com/axw/gocov/gocov@latest
