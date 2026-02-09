@@ -33,7 +33,8 @@ export PYTHONUSERBASE=/opt/cached_resources/sast/python/user_packages
     pytest-cov \
     bandit \
     coverage \
-    diff-cover
+    diff-cover \
+    diff_cover
 
 # 1. 安装 gocov 和 gocov-xml
 export GOPATH=/opt/cached_resources/sast/gopath
