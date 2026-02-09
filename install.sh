@@ -4,7 +4,6 @@ export NVM_DIR="$BASE_PATH/sast/nodejs/nvm"
 export PNPM_HOME="$BASE_PATH/sast/nodejs"
 mkdir -p "$NVM_DIR" "$PNPM_HOME"
 
-export PATH="$PNPM_HOME:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 # 1. 创建目标目录
 mkdir -p /opt/cached_resources/sast/python
 
@@ -72,14 +71,13 @@ nvm install 24
 node_path=$(nvm which 24)
 echo "Node 实际路径: $node_path"
 echo ">>> 清理旧的 pnpm 配置..."
-rm -rf ~/.pnpmrc
-rm -rf "$BASE_PATH/pnpm" # 删掉报错信息中那个错误的路径
+rm -rm ~/.config/pnpm
 export PATH="$PNPM_HOME:$PATH"
 
 # --- 4. 激活 pnpm (参照官方 Corepack 方式) ---
 echo ">>> 正在通过 Corepack 激活 pnpm..."
 corepack enable pnpm
-
+which pnpm
 # 关键：配置 pnpm 的持久化存储和全局目录
 # 确保 pnpm bin 目录也在持久化路径下
 pnpm config set store-dir "$BASE_PATH/sast/nodejs/pnpm_store" --global
