@@ -1,0 +1,83 @@
+title = "gitleaks config for LTS Log Scanner"
+description = "Sensitive information detection for LTS service logs"
+
+# Define patterns for detecting secrets
+# This config file is referenced in the scanning process
+
+[[rules]]
+id = "aws_access_key"
+description = "Detects AWS access key patterns"
+regex = '''(?i)aws_access_key_id\s*[=:]\s*[A-Z0-9]{20}'''
+entropy = 3.5
+keywords = ["aws_access_key"]
+
+[[rules]]
+id = "api_key"
+description = "Detects API key patterns"
+regex = '''(?i)api[_-]?key\s*[=:]\s*[a-zA-Z0-9]{32,}'''
+entropy = 3.5
+keywords = ["api_key", "apikey"]
+
+[[rules]]
+id = "private_key"
+description = "Detects private key patterns"
+regex = '''-----BEGIN (?:RSA |DSA |EC |OPENSSH )?PRIVATE KEY'''
+keywords = ["private_key", "private key"]
+
+[[rules]]
+id = "password"
+description = "Detects password patterns"
+regex = '''(?i)password\s*[=:]\s*[^\s]{8,}'''
+entropy = 3.5
+keywords = ["password"]
+
+[[rules]]
+id = "token"
+description = "Detects token patterns"
+regex = '''(?i)token\s*[=:]\s*[a-zA-Z0-9\-_.]{20,}'''
+entropy = 3.5
+keywords = ["token"]
+
+[[rules]]
+id = "database_url"
+description = "Detects database connection strings"
+regex = '''(?i)(?:mysql|postgres|mongodb|redis)://[^\s]+:[^\s]+@'''
+keywords = ["database", "db_url"]
+
+[[rules]]
+id = "ssh_key"
+description = "Detects SSH key patterns"
+regex = '''(?i)ssh[_-]?(?:private[_-])?key\s*[=:]\s*[a-zA-Z0-9+/]+'''
+entropy = 3.5
+keywords = ["ssh", "ssh_key"]
+
+[[rules]]
+id = "slack_token"
+description = "Detects Slack token patterns"
+regex = '''(?i)(?:slack|xoxp|xoxb)[_-]?token\s*[=:]\s*[a-zA-Z0-9\-]+'''
+entropy = 3.5
+keywords = ["slack", "token"]
+
+
+[[rules]]
+id = "git-url-credentials"
+description = "Detect passwords in Git clone URLs (username:password@domain.com)"
+regex = '''(?i)(?:https?|git|ssh|ftp)://[^\s/:]+:([^\s@]+?(?:@[^\s@]+?)*)@[^\s]+'''
+entropy = 2.5
+keywords = ["http://", "https://", "git://", "ssh://", "ftp://", "ftps://"]
+
+[[rules]]
+id='gitcode-token-rule'
+description = "GitCode Access Token in URL Parameter"
+# 匹配 access_token= 后跟着 18 到 30 个字符（字母、数字、下划线），以适应您看到的格式
+regex = '''(?:token|key|secret|credential|passwd|password|Authorization|creds|BLUE_NFS_PSW)\s*[:=]\s*['"]?([a-zA-Z0-9\-_./+=]{10,150})['"]?'''
+# 可选：帮助确认这不是一个误报
+keywords = ["access_token", "gitcode"]
+
+[[rules]]
+id='Git_Config_Exra_Header-Rule'
+description = "Git Config Extra Header Credential"
+# 匹配 -c http.extraheader=Authorization:Basic 后面跟着的 Base64 字符串
+# Base64 字符串通常包含 A-Z, a-z, 0-9, /, +, =
+regex = '''Authorization:Basic\s+([a-zA-Z0-9+/=]{16,})'''
+entropy = 3.0 # 保持相对较高的熵值来匹配 Base64 编码
