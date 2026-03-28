@@ -4,6 +4,14 @@ description = "Sensitive information detection for LTS service logs"
 # Define patterns for detecting secrets
 # This config file is referenced in the scanning process
 
+[allowlist]
+description = "忽略特定路径和文件"
+paths = [
+    '''node_modules''',
+    '''\.exe$''',
+    '''Ascend'''
+]
+
 [[rules]]
 id = "aws_access_key"
 description = "Detects AWS access key patterns"
