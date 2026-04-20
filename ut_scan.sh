@@ -290,7 +290,7 @@ run_analysis_Go() {
 
   # 获取所有包含 go.mod 的目录
   echo ">>> 检测 Go 模块..."
-
+  pwd=$(pwd)
   # 方法2: 查找所有 go.mod 文件的目录 (适用于根目录没有 go.mod 的情况)
   if [ -z "$MODULE_DIRS" ]; then
     echo ">>> 使用 find 查找 go.mod 文件..."
@@ -370,7 +370,7 @@ run_analysis_Go() {
         echo "✅ 模块 $MODULE_NAME 增量覆盖率已达标"
       fi
     fi
-    cd ..
+    cd ${pwd}
   done
 }
 
