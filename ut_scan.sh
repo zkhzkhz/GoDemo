@@ -471,7 +471,7 @@ run_analysis_NodeJs() {
   #npm install node-sass --verbose
   #加载依赖
   pnpm config set side-effects-cache false # 避免缓存干扰
-  pnpm approve-builds
+
 
   # 1. 安装依赖时建议使用 --frozen-lockfile 保证环境一致性
   # 如果是 Monorepo，add 命令会自动处理，但建议在 root 执行
