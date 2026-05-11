@@ -454,121 +454,114 @@ run_analysis_Python() {
 }
 
 run_analysis_NodeJs() {
-  RESULT=99.99
-  record_result "Node.js" "$RESULT" "PASS"
-  return 0   # 跳出当前函数，返回调用处
-
-  
-  local value
-  value=$(jq -r '.packageManager' package.json)
-
-  if [[ "$value" == *"yarn"* ]]; then
-    echo "检测到 yarn，执行 yarn 操作"
-    RESULT=99.99
-    record_result "Node.js" "$RESULT" "PASS"
-    return 0   # 跳出当前函数，返回调用处
-  fi
-
-  # 这部分代码只有在条件不满足时才会执行
-  echo "执行默认操作"
-
-  #如需安装node-sass
-  #npm install node-sass --verbose
-  #加载依赖
-  pnpm config set side-effects-cache false # 避免缓存干扰
-
-
-  # 1. 安装依赖时建议使用 --frozen-lockfile 保证环境一致性
-  # 如果是 Monorepo，add 命令会自动处理，但建议在 root 执行
-
-  echo "ls"
   ls
-
-  # 自动生成 pnpm-workspace.yaml（如果需要）
-  if [ -d "packages" ] && [ ! -f "pnpm-workspace.yaml" ]; then
-    echo "检测到 packages 目录但缺少 pnpm-workspace.yaml，自动生成中..."
-    echo "packages:" > pnpm-workspace.yaml
-    echo "  - 'packages/*'" >> pnpm-workspace.yaml
-    echo "✓ 已生成 pnpm-workspace.yaml"
-  fi
+  local packageManager
+  packageManager=$(jq -r '.packageManager // empty' package.json 2>/dev/null)
   
-  # 循环检查并创建缺失的工作区包
-  while true; do
-    echo "开始执行pnpm i"
-    PNPM_OUTPUT=$(pnpm i 2>&1)
-    PNPM_EXIT_CODE=$?
+  local isYarnProject=false
+  if [ -f "yarn.lock" ] || [[ "$packageManager" == yarn* ]]; then
+    isYarnProject=true
+  fi
 
-    # 检查是否有工作区包不存在的错误
-    if echo "$PNPM_OUTPUT" | grep -q "ERR_PNPM_WORKSPACE_PKG_NOT_FOUND"; then
-      # 提取缺失的包名（匹配 "package named \"xxx\" is present"）
-      MISSING_PKG=$(echo "$PNPM_OUTPUT" | grep -oP 'no package named "\K[^"]+' | head -n 1)
+  if [ "$isYarnProject" = true ]; then
+    echo "检测到 yarn 项目"
+    npm install yarn -g
+    yarn install --frozen-lockfile 2>&1 || yarn install 2>&1
 
-      if [ -n "$MISSING_PKG" ]; then
-        echo "检测到缺失的工作区包: $MISSING_PKG，自动创建中..."
-        PKG_DIR="packages/$MISSING_PKG"
+    yarn_add() {
+      local is_monorepo
+      is_monorepo=$(jq -r '.workspaces // empty' package.json 2>/dev/null)
+      if [ -n "$is_monorepo" ]; then
+        echo "检测到 yarn monorepo 环境，使用 -W 参数..."
+        yarn add -W -D "$@"
+      else
+        echo "普通项目，直接安装..."
+        yarn add -D "$@"
+      fi
+    }
+  else
+    echo "执行 pnpm 操作"
+    pnpm config set side-effects-cache false
 
-        if [ ! -d "$PKG_DIR" ]; then
-          mkdir -p "$PKG_DIR"
-          cat > "$PKG_DIR/package.json" <<EOF
+    if ! pnpm approve-builds --help 2>&1 | grep -q "\-\-all"; then
+      echo "pnpm 版本不支持 --all 参数，正在升级到最新版本..."
+      npm install -g pnpm@latest
+    fi
+
+    if [ -d "packages" ] && [ ! -f "pnpm-workspace.yaml" ]; then
+      echo "检测到 packages 目录但缺少 pnpm-workspace.yaml，自动生成中..."
+      echo "packages:" > pnpm-workspace.yaml
+      echo "  - 'packages/*'" >> pnpm-workspace.yaml
+      echo "✓ 已生成 pnpm-workspace.yaml"
+    fi
+
+    while true; do
+      echo "开始执行pnpm i"
+      PNPM_OUTPUT=$(pnpm i 2>&1)
+      PNPM_EXIT_CODE=$?
+
+      if echo "$PNPM_OUTPUT" | grep -q "ERR_PNPM_WORKSPACE_PKG_NOT_FOUND"; then
+        MISSING_PKG=$(echo "$PNPM_OUTPUT" | grep -oP 'no package named "\K[^"]+' | head -n 1)
+
+        if [ -n "$MISSING_PKG" ]; then
+          echo "检测到缺失的工作区包: $MISSING_PKG，自动创建中..."
+          PKG_DIR="packages/$MISSING_PKG"
+
+          if [ ! -d "$PKG_DIR" ]; then
+            mkdir -p "$PKG_DIR"
+            cat > "$PKG_DIR/package.json" <<EOF
 {
   "name": "$MISSING_PKG",
   "private": true,
   "version": "1.0.0"
 }
 EOF
-          echo "✓ 已创建包: $MISSING_PKG"
+            echo "✓ 已创建包: $MISSING_PKG"
+          fi
+        else
+          echo "$PNPM_OUTPUT"
+          exit $PNPM_EXIT_CODE
         fi
-        # 继续循环重试
-      else
-        # 没有提取到包名，但有错误，直接退出
+      elif echo "$PNPM_OUTPUT" | grep -q "ERR_PNPM_IGNORED_BUILDS"; then
+        echo "检测到构建脚本被阻止，正在自动批准..."
+        pnpm approve-builds --all
+      elif [ $PNPM_EXIT_CODE -ne 0 ]; then
         echo "$PNPM_OUTPUT"
         exit $PNPM_EXIT_CODE
+      else
+        echo "$PNPM_OUTPUT"
+        break
       fi
-    elif [ $PNPM_EXIT_CODE -ne 0 ]; then
-      # 其他错误，显示输出并退出
-      echo "$PNPM_OUTPUT"
-      exit $PNPM_EXIT_CODE
-    else
-      # 安装成功，显示输出并退出循环
-      echo "$PNPM_OUTPUT"
-      break
-    fi
-  done
+    done
 
-  pnpm_add() {
-    if [ -f "pnpm-workspace.yaml" ]; then
-      echo "检测到 monorepo 环境，使用 -w 参数..."
-      pnpm add -w "$@"
-    else
-      echo "普通项目，直接安装..."
-      pnpm add "$@"
-    fi
-  }
-  # 根据 package.json 中 vite 版本选择匹配的 vitest 版本
+    pnpm_add() {
+      if [ -f "pnpm-workspace.yaml" ]; then
+        echo "检测到 monorepo 环境，使用 -w 参数..."
+        pnpm add -w "$@"
+      else
+        echo "普通项目，直接安装..."
+        pnpm add "$@"
+      fi
+    }
+  fi
   VITE_VERSION=$(jq -r '(.devDependencies.vite // .dependencies.vite // "") | ltrimstr("^") | ltrimstr("~")' package.json 2>/dev/null || echo "")
   VITE_MAJOR=$(echo "$VITE_VERSION" | cut -d'.' -f1)
   if [ "$VITE_MAJOR" = "7" ] || [ "$VITE_MAJOR" -gt 7 ] 2>/dev/null; then
     VITEST_VERSION="4.0.18"
-  elif [ "$VITE_MAJOR" = "6" ]; then
-    VITEST_VERSION="3.0.7"
-  else
-    VITEST_VERSION="2.0.2"
-  fi
-  # 根据 vite 主版本确定 plugin-vue 和 plugin-vue-jsx 的推荐版本
-  if [ "$VITE_MAJOR" = "7" ] || [ "$VITE_MAJOR" -gt 7 ] 2>/dev/null; then
     PLUGIN_VUE_VERSION="latest"
     PLUGIN_VUE_JSX_VERSION="latest"
   elif [ "$VITE_MAJOR" = "6" ]; then
+    VITEST_VERSION="3.0.7"
     PLUGIN_VUE_VERSION="5"
     PLUGIN_VUE_JSX_VERSION="4"
   else
+    VITEST_VERSION="2.0.2"
     PLUGIN_VUE_VERSION="4"
     PLUGIN_VUE_JSX_VERSION="3"
   fi
 
   echo "检测到 vite 版本: ${VITE_VERSION:-未找到}，使用 vitest@${VITEST_VERSION}"
 
-  # 检查 @vitejs/plugin-vue 和 @vitejs/plugin-vue-jsx 是否已在项目依赖中声明
   HAS_PLUGIN_VUE=$(jq -r '(.devDependencies["@vitejs/plugin-vue"] // .dependencies["@vitejs/plugin-vue"] // "")' package.json 2>/dev/null || echo "")
   HAS_PLUGIN_VUE_JSX=$(jq -r '(.devDependencies["@vitejs/plugin-vue-jsx"] // .dependencies["@vitejs/plugin-vue-jsx"] // "")' package.json 2>/dev/null || echo "")
 
@@ -586,8 +579,15 @@ EOF
     echo "@vitejs/plugin-vue-jsx 已存在（${HAS_PLUGIN_VUE_JSX}），跳过安装"
   fi
 
-  echo "pnpm_add -D vitest@${VITEST_VERSION} @vitest/coverage-v8@${VITEST_VERSION}${EXTRA_PLUGINS}"
-  pnpm_add -D vitest@${VITEST_VERSION} @vitest/coverage-v8@${VITEST_VERSION}${EXTRA_PLUGINS} jsdom@24.0.0 semver@7.5.1 --quiet
+  TEST_DEPS="vitest@${VITEST_VERSION} @vitest/coverage-v8@${VITEST_VERSION}${EXTRA_PLUGINS} jsdom@24.0.0 semver@7.5.1"
+  
+  if [ "$isYarnProject" = true ]; then
+    echo "yarn_add -D ${TEST_DEPS}"
+    yarn_add -D ${TEST_DEPS}
+  else
+    echo "pnpm_add -D ${TEST_DEPS}"
+    pnpm_add -D ${TEST_DEPS} --quiet
+  fi
 
   # 检查本地配置文件是否存在
   LOCAL_CONFIG=""
@@ -748,7 +748,6 @@ main() {
   echo "-----------------------------------------------------------"
   echo "$SUMMARY_TABLE"
   echo "==========================================================="
-  rm -rf /opt/cached_resources/pr_diffs/${platform}/${owner}/${repo}/${PR_ID}
   # --- 返回值判定 ---
   if [ "$GLOBAL_SUCCESS" = true ]; then
     echo ">>> ✔️ [SUCCESS] 所有语言覆盖率均达标。"
