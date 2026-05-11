@@ -701,10 +701,11 @@ main() {
 
   # 2. 获取 TOP 3 语言（存入一个换行符分隔的字符串）
   TOP_LANGS_STR=$(scc --format csv . |
-    grep -E "$SUPPORTED_LANGS" |
+    grep -E "^(Java|Python|Go|JavaScript|TypeScript)," |
     sort -t, -k6 -nr |
     head -n 3 |
-    cut -d, -f1)
+    cut -d, -f1 |
+    grep -v " ")
 
   # 3. 验证并循环处理
   if [ -z "$TOP_LANGS_STR" ]; then
