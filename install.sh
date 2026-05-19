@@ -102,6 +102,20 @@ echo "验证持久化工具链："
 echo "所有工具已链接至: $BASE_PATH/sast/nodejs"
 echo "--------------------------------------"
 
+# --- 6. 激活 yarn (参照官方 Corepack 方式) ---
+echo ">>> 正在通过 Corepack 激活 yarn..."
+corepack enable yarn
+which yarn
+
+# 建立全局软链接
+YARN_REAL_PATH=$(which yarn)
+ln -sf "$YARN_REAL_PATH" "$BASE_PATH/sast/nodejs/yarn"
+
+# 验证 yarn 安装
+echo ">>> 验证 yarn 安装："
+"$BASE_PATH/sast/nodejs/yarn" --version
+echo "yarn 已链接至: $BASE_PATH/sast/nodejs/yarn"
+
 mkdir -p $BASE_PATH/tools/common
 
 echo ">>> 检查 jq 版本并尝试更新 (架构: amd64)..."
