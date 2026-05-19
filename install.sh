@@ -353,13 +353,13 @@ else
     exit 1
 fi
 
-chmod 500 "$BASE_PATH/tools/common/*"
-chmod 500 "$BASE_PATH/tools/scripts/*"
-chmod 500 "$BASE_PATH/tools/gcm/*"
-chmod 500 "$BASE_PATH/tools/gitleaks/*"
-chmod 500 "$BASE_PATH/tools/scc/*"
-chmod 500 "$BASE_PATH/tools/sign/*"
-chmod 500 "$BASE_PATH/bin/*"
+chmod 500 "$BASE_PATH"/tools/common/*
+chmod 500 "$BASE_PATH"/tools/scripts/*
+chmod 500 "$BASE_PATH"/tools/gcm/*
+chmod 500 "$BASE_PATH"/tools/gitleaks/*
+chmod 500 "$BASE_PATH"/tools/scc/*
+chmod 500 "$BASE_PATH"/tools/sign/*
+chmod 500 "$BASE_PATH"/bin/*
 
 # 清理
 rm -rf "$TMP_DIR"
