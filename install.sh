@@ -69,52 +69,42 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | NVM_D
 echo ">>> 正在安装 Node.js 24..."
 nvm install 24
 
-# 验证安装
+# 验证安装并获取真实路径
 node_path=$(nvm which 24)
-echo "Node 实际路径: $node_path"
+NODE_BIN_DIR=$(dirname "$node_path")
+echo "Node 实际物理 bin 路径: $NODE_BIN_DIR"
+
 echo ">>> 清理旧的 pnpm 配置..."
-rm -rf ~/.config/pnpm
+rm -rf ~/.config/pnpm                  # <- 1. 修复这里的 -rm 错误
+
 export PATH="$PNPM_HOME:$PATH"
 
-# --- 4. 激活 pnpm (参照官方 Corepack 方式) ---
-echo ">>> 正在通过 Corepack 激活 pnpm..."
-corepack enable pnpm
-which pnpm
-# 关键：配置 pnpm 的持久化存储和全局目录
-# 确保 pnpm bin 目录也在持久化路径下
+# --- 4. 激活 pnpm & yarn (Corepack 方式) ---
+echo ">>> 正在通过 Corepack 激活 pnpm 和 yarn..."
+corepack enable pnpm yarn
+
+# 配置 pnpm 的持久化存储
 pnpm config set store-dir "$BASE_PATH/sast/nodejs/pnpm_store" --global
 
-# --- 5. 建立全局软链接 (方便 ut_scan.sh 直接调用) ---
-# 这样你的扫描脚本只需把 /opt/cached_resources/bin 加入 PATH 即可
-ln -sf "$node_path" "$BASE_PATH/sast/nodejs"
-ln -sf "$(dirname "$node_path")/npm" "$BASE_PATH/sast/nodejs/npm"
-ln -sf "$(dirname "$node_path")/npx" "$BASE_PATH/sast/nodejs/npx"
+# --- 5. 建立全局软链接 (防止死循环) ---
+echo ">>> 正在建立持久化软链接..."
+mkdir -p "$BASE_PATH/sast/nodejs"
 
-# 找到 corepack 激活后的 pnpm 真实路径并链接
-PNPM_REAL_PATH=$(which pnpm)
-ln -sf "$PNPM_REAL_PATH" "$BASE_PATH/sast/nodejs/pnpm"
+ln -sf "$node_path"          "$BASE_PATH/sast/nodejs/node" # <- 3. 明确指定目标文件名
+ln -sf "$NODE_BIN_DIR/npm"   "$BASE_PATH/sast/nodejs/npm"
+ln -sf "$NODE_BIN_DIR/npx"   "$BASE_PATH/sast/nodejs/npx"
+ln -sf "$NODE_BIN_DIR/pnpm"  "$BASE_PATH/sast/nodejs/pnpm" # <- 2. 修复死循环链接
+ln -sf "$NODE_BIN_DIR/yarn"  "$BASE_PATH/sast/nodejs/yarn"
 
 # --- 验证结果 ---
 echo "--------------------------------------"
 echo "验证持久化工具链："
 "$BASE_PATH/sast/nodejs/node" -v
 "$BASE_PATH/sast/nodejs/pnpm" -v
-echo "所有工具已链接至: $BASE_PATH/sast/nodejs"
+"$BASE_PATH/sast/nodejs/yarn" -v
+echo "所有工具已安全链接至: $BASE_PATH/sast/nodejs"
 echo "--------------------------------------"
 
-# --- 6. 激活 yarn (参照官方 Corepack 方式) ---
-echo ">>> 正在通过 Corepack 激活 yarn..."
-corepack enable yarn
-which yarn
-
-# 建立全局软链接
-YARN_REAL_PATH=$(which yarn)
-ln -sf "$YARN_REAL_PATH" "$BASE_PATH/sast/nodejs/yarn"
-
-# 验证 yarn 安装
-echo ">>> 验证 yarn 安装："
-"$BASE_PATH/sast/nodejs/yarn" --version
-echo "yarn 已链接至: $BASE_PATH/sast/nodejs/yarn"
 
 mkdir -p $BASE_PATH/tools/common
 
