@@ -73,7 +73,7 @@ nvm install 24
 node_path=$(nvm which 24)
 echo "Node 实际路径: $node_path"
 echo ">>> 清理旧的 pnpm 配置..."
-rm -rm ~/.config/pnpm
+rm -rf ~/.config/pnpm
 export PATH="$PNPM_HOME:$PATH"
 
 # --- 4. 激活 pnpm (参照官方 Corepack 方式) ---
