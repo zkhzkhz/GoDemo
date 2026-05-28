@@ -251,29 +251,76 @@ run_analysis_Python (){
 
 
 run_analysis_Nodejs (){
-    local value
-    value=$(jq -r '.packageManager' package.json)
-
-    if [[ "$value" == *"yarn"* ]]; then
-        echo "检测到 yarn，执行 yarn 操作"
-        TOTAL_FOUND=0
-        record_result "ESLint NodeJS" "$TOTAL_FOUND" "PASS"
-        return 0   # 跳出当前函数，返回调用处
+    ls
+    local packageManager
+    packageManager=$(jq -r '.packageManager // empty' package.json 2>/dev/null)
+    
+    local isYarnProject=false
+    if [ -f "yarn.lock" ] || [[ "$packageManager" == yarn* ]]; then
+        isYarnProject=true
     fi
 
-    # 这部分代码只有在条件不满足时才会执行
-    echo "执行默认操作"
-   
+    if [ "$isYarnProject" = true ]; then
+        echo "检测到 yarn 项目"
+        npm install yarn -g
+        yarn install --frozen-lockfile 2>&1 || yarn install 2>&1
+
+        yarn_add() {
+            local is_monorepo
+            is_monorepo=$(jq -r '.workspaces // empty' package.json 2>/dev/null)
+            if [ -n "$is_monorepo" ]; then
+                echo "检测到 yarn monorepo 环境，使用 -W 参数..."
+                yarn add -W -D "$@"
+            else
+                echo "普通项目，直接安装..."
+                yarn add -D "$@"
+            fi
+        }
+    else
+        echo "执行 pnpm 操作"
+
+        if ! pnpm approve-builds --help 2>&1 | grep -q "\-\-all"; then
+            echo "pnpm 版本不支持 --all 参数，正在升级到最新版本..."
+            npm install -g pnpm@latest
+        fi
+
+        while true; do
+            PNPM_OUTPUT=$(pnpm i 2>&1)
+            PNPM_EXIT_CODE=$?
+
+            if echo "$PNPM_OUTPUT" | grep -q "ERR_PNPM_IGNORED_BUILDS"; then
+                echo "检测到构建脚本被阻止，正在自动批准..."
+                pnpm approve-builds --all
+            elif [ $PNPM_EXIT_CODE -ne 0 ]; then
+                echo "$PNPM_OUTPUT"
+                exit $PNPM_EXIT_CODE
+            else
+                echo "$PNPM_OUTPUT"
+                break
+            fi
+        done
+
+        pnpm_add() {
+            if [ -f "pnpm-workspace.yaml" ]; then
+                echo "检测到 monorepo 环境，使用 -w 参数..."
+                pnpm add -w "$@"
+            else
+                echo "普通项目，直接安装..."
+                pnpm add "$@"
+            fi
+        }
+    fi
+
     # 1. 安装 ESLint 相关依赖（使用最新稳定版本）
     echo "正在安装 ESLint 依赖..."
-    pnpm i
-    pnpm add -D \
-        eslint@9.39.2 \
-        @eslint/js@9.39.2 \
-        eslint-plugin-vue@9.31.0 \
-        @vue/eslint-config-typescript@14.2.0 \
-        @vue/eslint-config-prettier@10.2.0 \
-        typescript-eslint@8.55.0
+    ESLINT_DEPS="eslint@9.39.2 @eslint/js@9.39.2 eslint-plugin-vue@9.31.0 @vue/eslint-config-typescript@14.2.0 @vue/eslint-config-prettier@10.2.0 typescript-eslint@8.55.0"
+    if [ "$isYarnProject" = true ]; then
+        echo "yarn_add -D ${ESLINT_DEPS}"
+        yarn_add $ESLINT_DEPS
+    else
+        echo "pnpm_add -D ${ESLINT_DEPS}"
+        pnpm_add -D $ESLINT_DEPS
+    fi
 
     # 2. 清理旧配置文件
     echo "清理旧配置文件..."
@@ -287,195 +334,201 @@ run_analysis_Nodejs (){
 
     # 3. 生成 .prettierrc.json 配置文件（解决换行符问题）
     echo "生成 .prettierrc.json 配置文件..."
-    cat "{
-      "$schema": "https://json.schemastore.org/prettierrc",
-      "endOfLine": "auto",
-      "semi": true,
-      "tabWidth": 2,
-      "singleQuote": true,
-      "printWidth": 160,
-      "trailingComma": "es5"
-    }" > .prettierrc.json
+    cat "
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "endOfLine": "auto",
+  "semi": true,
+  "tabWidth": 2,
+  "singleQuote": true,
+  "printWidth": 160,
+  "trailingComma": "es5"
+}" > .prettierrc.json
 
     # 4. 生成 eslint.config.js（使用 Flat Config 格式）
     echo "生成 eslint.config.js..."
-    cat "import js from '@eslint/js';
-    import vue from 'eslint-plugin-vue';
-    import typescript from '@vue/eslint-config-typescript';
-    import prettierSkip from '@vue/eslint-config-prettier/skip-formatting';
-    import tseslint from 'typescript-eslint';
+    cat "
+import js from '@eslint/js';
+import vue from 'eslint-plugin-vue';
+import typescript from '@vue/eslint-config-typescript';
+import prettierSkip from '@vue/eslint-config-prettier/skip-formatting';
+import tseslint from 'typescript-eslint';
 
-    export default [
-      // 基础 JavaScript 推荐规则
-      js.configs.recommended,
+export default [
+  // 基础 JavaScript 推荐规则
+  js.configs.recommended,
 
-      // Vue 3 推荐规则
-      ...vue.configs['flat/essential'],
+  // Vue 3 推荐规则
+  ...vue.configs['flat/essential'],
 
-      // TypeScript 规则
-      ...typescript({
-        extends: ['base']
-      }),
+  // TypeScript 规则
+  ...typescript({
+    extends: ['base']
+  }),
 
-      // Prettier 规则（跳过格式化）
-      prettierSkip,
+  // Prettier 规则（跳过格式化）
+  prettierSkip,
 
-      // 项目特定配置
-      {
-        files: ['**/*.{js,ts,vue,jsx,tsx}'],
-        rules: {
-          // 在这里添加自定义规则
-          'vue/multi-word-component-names': 'off',
-          // 禁用原生的 no-unused-vars 规则
-          'no-unused-vars': 'off',
-          // 启用 TypeScript 版本的 no-unused-vars
-          '@typescript-eslint/no-unused-vars': [
-            'error',
-            {
-              argsIgnorePattern: '^_',
-              varsIgnorePattern: '^_',
-              caughtErrorsIgnorePattern: '^_',
-            },
-          ],
+  // 项目特定配置
+  {
+    files: ['**/*.{js,ts,vue,jsx,tsx}'],
+    rules: {
+      // 在这里添加自定义规则
+      'vue/multi-word-component-names': 'off',
+      // 禁用原生的 no-unused-vars 规则
+      'no-unused-vars': 'off',
+      // 启用 TypeScript 版本的 no-unused-vars
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
         },
-        languageOptions: {
-          ecmaVersion: 'latest',
-          sourceType: 'module',
-          globals: {
-            // 自定义hooks
-            useLocale: 'readonly',
-            useScreen: 'readonly',
-        
-            // Vue 自动导入
-            computed: 'readonly',
-            ref: 'readonly',
-            reactive: 'readonly',
-            watch: 'readonly',
-            watchEffect: 'readonly',
-            unref: 'readonly',
-            toRef: 'readonly',
-            toRefs: 'readonly',
-            isRef: 'readonly',
-            readonly: 'readonly',
-            shallowRef: 'readonly',
-            shallowReactive: 'readonly',
-            toRaw: 'readonly',
-            markRaw: 'readonly',
-            effectScope: 'readonly',
-            getCurrentScope: 'readonly',
-            onScopeDispose: 'readonly',
-            nextTick: 'readonly',
-            PropType: 'readonly',
+      ],
+    },
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        // 自定义hooks
+        useLocale: 'readonly',
+        useScreen: 'readonly',
 
-            // Vue 生命周期
-            onBeforeMount: 'readonly',
-            onMounted: 'readonly',
-            onBeforeUpdate: 'readonly',
-            onUpdated: 'readonly',
-            onBeforeUnmount: 'readonly',
-            onUnmounted: 'readonly',
-            onActivated: 'readonly',
-            onDeactivated: 'readonly',
-            onErrorCaptured: 'readonly',
+        // Vue 自动导入
+        computed: 'readonly',
+        ref: 'readonly',
+        reactive: 'readonly',
+        watch: 'readonly',
+        watchEffect: 'readonly',
+        unref: 'readonly',
+        toRef: 'readonly',
+        toRefs: 'readonly',
+        isRef: 'readonly',
+        readonly: 'readonly',
+        shallowRef: 'readonly',
+        shallowReactive: 'readonly',
+        toRaw: 'readonly',
+        markRaw: 'readonly',
+        effectScope: 'readonly',
+        getCurrentScope: 'readonly',
+        onScopeDispose: 'readonly',
+        nextTick: 'readonly',
+        PropType: 'readonly',
 
-            // Nuxt 自动导入
-            useRouter: 'readonly',
-            useRoute: 'readonly',
-            useAsyncData: 'readonly',
-            useFetch: 'readonly',
-            useLazyFetch: 'readonly',
-            useLazyAsyncData: 'readonly',
-            useNuxtApp: 'readonly',
-            useRuntimeConfig: 'readonly',
-            useState: 'readonly',
-            useCookie: 'readonly',
-            useRequestHeaders: 'readonly',
-            useRequestEvent: 'readonly',
-            useRequestFetch: 'readonly',
-            useRequestURL: 'readonly',
-            useHead: 'readonly',
-            useSeoMeta: 'readonly',
-            useError: 'readonly',
-            useNuxtData: 'readonly',
-            refreshNuxtData: 'readonly',
-            clearNuxtData: 'readonly',
-            createError: 'readonly',
-            showError: 'readonly',
-            clearError: 'readonly',
-            navigateTo: 'readonly',
-            abortNavigation: 'readonly',
-            setPageLayout: 'readonly',
-            definePageMeta: 'readonly',
-            prefetchComponents: 'readonly',
-            preloadRouteComponents: 'readonly',
-            preloadComponents: 'readonly',
-            reloadNuxtApp: 'readonly',
-            defineNuxtPlugin: 'readonly',
-            defineNuxtRouteMiddleware: 'readonly',
-            defineNitroPlugin: 'readonly',
+        // Vue 生命周期
+        onBeforeMount: 'readonly',
+        onMounted: 'readonly',
+        onBeforeUpdate: 'readonly',
+        onUpdated: 'readonly',
+        onBeforeUnmount: 'readonly',
+        onUnmounted: 'readonly',
+        onActivated: 'readonly',
+        onDeactivated: 'readonly',
+        onErrorCaptured: 'readonly',
 
-            // Nuxt Content
-            queryContent: 'readonly',
+        // Nuxt 自动导入
+        useRouter: 'readonly',
+        useRoute: 'readonly',
+        useAsyncData: 'readonly',
+        useFetch: 'readonly',
+        useLazyFetch: 'readonly',
+        useLazyAsyncData: 'readonly',
+        useNuxtApp: 'readonly',
+        useRuntimeConfig: 'readonly',
+        useState: 'readonly',
+        useCookie: 'readonly',
+        useRequestHeaders: 'readonly',
+        useRequestEvent: 'readonly',
+        useRequestFetch: 'readonly',
+        useRequestURL: 'readonly',
+        useHead: 'readonly',
+        useSeoMeta: 'readonly',
+        useError: 'readonly',
+        useNuxtData: 'readonly',
+        refreshNuxtData: 'readonly',
+        clearNuxtData: 'readonly',
+        createError: 'readonly',
+        showError: 'readonly',
+        clearError: 'readonly',
+        navigateTo: 'readonly',
+        abortNavigation: 'readonly',
+        setPageLayout: 'readonly',
+        definePageMeta: 'readonly',
+        prefetchComponents: 'readonly',
+        preloadRouteComponents: 'readonly',
+        preloadComponents: 'readonly',
+        reloadNuxtApp: 'readonly',
+        defineNuxtPlugin: 'readonly',
+        defineNuxtRouteMiddleware: 'readonly',
+        defineNitroPlugin: 'readonly',
 
-            // Pinia
-            defineStore: 'readonly',
-            acceptHMRUpdate: 'readonly',
-            storeToRefs: 'readonly',
+        // Nuxt Content
+        queryContent: 'readonly',
 
-            // VueUse
-            useDebounceFn: 'readonly',
-            useEventListener: 'readonly',
-            useTemplateRef: 'readonly',
-            useIntersectionObserver: 'readonly',
-            useDocumentVisibility: 'readonly',
-            watchDebounced: 'readonly',
+        // Pinia
+        defineStore: 'readonly',
+        acceptHMRUpdate: 'readonly',
+        storeToRefs: 'readonly',
 
-            // 项目常量
-            COOKIE_KEY: 'readonly',
-            COOKIE_AGREED_STATUS: 'readonly',
+        // VueUse
+        useDebounceFn: 'readonly',
+        useEventListener: 'readonly',
+        useTemplateRef: 'readonly',
+        useIntersectionObserver: 'readonly',
+        useDocumentVisibility: 'readonly',
+        watchDebounced: 'readonly',
 
-            // 第三方库全局对象
-            ClipboardJS: 'readonly',
+        // 项目常量
+        COOKIE_KEY: 'readonly',
+        COOKIE_AGREED_STATUS: 'readonly',
 
-            // TypeScript 全局类型
-            NodeListOf: 'readonly',
+        // 第三方库全局对象
+        ClipboardJS: 'readonly',
 
-            // 浏览器全局对象
-            document: 'readonly',
-            navigator: 'readonly',
-            window: 'readonly',
-          },
-        },
+        // TypeScript 全局类型
+        NodeListOf: 'readonly',
+
+        // 浏览器全局对象
+        document: 'readonly',
+        navigator: 'readonly',
+        window: 'readonly',
+
+        // NodeJS全局对象
+        Buffer: 'readonly',
+        require: 'readonly',
       },
+    },
+  },
 
-      // 忽略的文件
-      {
-        ignores: [
-          '**/node_modules/**',
-          '**/dist/**',
-          '**/.output/**',
-          '**/.nuxt/**',
-          '**/coverage/**',
-          '**/public/**',
-          '**/npmcache/**',
-          '**/cache/**',
-          '**/vite.config.{js,ts}',
-          '**/vitest.config.{js,ts}',
-          '**/vitest.setup.{js,ts}',
-          '**/nuxt.config.{js,ts}',
-          '**/config.mjs',
-          '**/*.d.ts',
-          'eslint.config.js'
-        ],
-      },
-    ];" > eslint.config.js
+  // 忽略的文件
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.output/**',
+      '**/.nuxt/**',
+      '**/coverage/**',
+      '**/public/**',
+      '**/npmcache/**',
+      '**/cache/**',
+      '**/vite.config.{js,ts}',
+      '**/vitest.config.{js,ts}',
+      '**/vitest.setup.{js,ts}',
+      '**/nuxt.config.{js,ts}',
+      '**/config.mjs',
+      '**/*.d.ts',
+      'eslint.config.js'
+    ],
+  },
+];" > eslint.config.js
 
     # 5. 运行 ESLint 检查
     echo "运行 ESLint 检查..."
     RESULT_FILE="eslint_result.json"
+    npx eslint "**/*.{js,ts,vue,jsx,tsx}" --format stylish
     npx eslint "**/*.{js,ts,vue,jsx,tsx}" --format json -o $RESULT_FILE
 
-    cat "$RESULT_FILE"
     if [ -f "$RESULT_FILE" ]; then
             # 3. 提取数据 (ESLint JSON 是数组结构，需要对所有文件的 message 进行汇总)
 
@@ -517,8 +570,26 @@ main() {
     # 获取 fetch 的仓库地址
     remote_url=$(git remote -v | grep '(fetch)' | awk '{print $2}')
 
-    # 去除 .git、ssh@、https://、http://
-    cleaned_repo_url=$(echo "$remote_url" | sed -E 's#https?://##' | tr '/' '@') 
+    if [[ "$remote_url" == git@* ]]; then
+        # 将 git@github.com:user/repo.git 转换为 github.com@user@repo.git
+        cleaned_repo_url=$(echo "$remote_url" | sed -E 's#^git@([^:]+):([^/]+)/(.+)\.git$#\1@\2@\3.git#')
+    else
+        url_no_git=${remote_url%.git}
+        
+        # 处理代理仓库：如果包含 /https:// 或 /http://，则提取后面的部分
+        if [[ "$url_no_git" == *"/https://"* ]]; then
+            # 提取 /https:// 之后的部分
+            real_url="https://$(echo "$url_no_git" | sed 's#.*/https://##')"
+        elif [[ "$url_no_git" == *"/http://"* ]]; then
+            # 提取 /http:// 之后的部分
+            real_url="http://$(echo "$url_no_git" | sed 's#.*/http://##')"
+        else
+            real_url="$url_no_git"
+        fi
+        
+        cleaned_repo_url=$(echo "$real_url" | sed -E 's#https?://##' | tr '/' '@')
+        cleaned_repo_url="${cleaned_repo_url}.git"
+    fi
 
     # 将清理后的结果赋值给变量
     echo "Cleaned URL: $cleaned_repo_url"
