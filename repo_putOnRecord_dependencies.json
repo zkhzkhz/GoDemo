@@ -1,0 +1,56 @@
+[
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2021-22147",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:11:58"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2023-31417",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:15:35"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2023-31418",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:16:22"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2023-31419",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:16:33"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2023-46673",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:16:46"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2023-49921",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:17:12"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2024-23444",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:17:20"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2024-23450",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 11:17:31"
+  },
+  {
+    "PkgName": "org.elasticsearch:elasticsearch",
+    "VulnerabilityID": "CVE-2024-43709",
+    "full_name": "opensourceways/datastat-server",
+    "RecordTime": "2026-02-06 16:48:18"
+  }
+]
